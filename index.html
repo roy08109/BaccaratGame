@@ -33,6 +33,8 @@
             flex-direction: column;
             padding: 20px;
             position: relative;
+            overflow-y: auto; /* 允许垂直滚动 */
+            -webkit-overflow-scrolling: touch; /* 平滑滚动 */
         }
 
         .center-content {
@@ -659,6 +661,42 @@
             animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
+        /* 响应式调整：自动识别屏幕高度并调整大小 */
+        @media (max-height: 800px) {
+            .container { padding: 15px; }
+            .app-header { height: 44px; margin-bottom: 5px; }
+            .header-title { font-size: 16px; }
+            .game-header-row { margin-bottom: 15px; gap: 10px; }
+            .balance-display, .stats-display { height: 80px; padding: 10px; }
+            .balance-display span:first-child { font-size: 14px !important; }
+            .balance-display span:last-child { font-size: 20px !important; }
+            .stats-display { font-size: 14px; }
+            .result-display { padding: 15px; margin-bottom: 15px; }
+            .current-result { font-size: 24px; margin: 10px 0; min-height: 36px; }
+            .history-container { height: 60px; margin-bottom: 15px; padding: 10px; }
+            .history-item { width: 40px; height: 40px; min-width: 40px; font-size: 16px; }
+            .chip-selection { margin-bottom: 15px; gap: 10px; }
+            .chip { padding: 5px 0; font-size: 12px; }
+            .bet-option { height: 85px; font-size: 16px; }
+            .bet-amount { font-size: 20px !important; }
+            .controls { margin-top: 15px; gap: 10px; }
+            .btn-primary, .btn-secondary, .btn-success { height: 50px; font-size: 16px; margin-top: 10px; }
+        }
+
+        @media (max-height: 650px) {
+            .container { padding: 10px; }
+            .game-header-row { margin-bottom: 10px; }
+            .balance-display, .stats-display { height: 70px; }
+            .result-display { padding: 10px; margin-bottom: 10px; }
+            .current-result { margin: 5px 0; }
+            .probability-display { margin-top: 10px; padding-top: 10px; }
+            .history-container { height: 50px; margin-bottom: 10px; }
+            .history-item { width: 34px; height: 34px; min-width: 34px; font-size: 14px; margin-right: 8px; }
+            .chip-selection { margin-bottom: 10px; }
+            .bet-option { height: 70px; font-size: 14px; }
+            .controls { margin-top: 10px; }
+            .btn-primary, .btn-secondary, .btn-success { height: 44px; font-size: 14px; }
+        }
     </style>
 </head>
 <body>
