@@ -6,6 +6,130 @@ const CONFIG = {
     zhanglang: { rows: 6, cols: 30, type: 'cockroach' },
     zhuzailu: { rows: 6, cols: 15, type: 'bead' }
 };
+
+const TRANSLATIONS = {
+    'zh-CN': {
+        settings_title: '游戏设置',
+        table_limit: '台红限制',
+        commission_mode: '抽水模式',
+        comm_classic: '95桌 (庄赢0.95)',
+        comm_super6: '6点一半 (免佣)',
+        game_options: '玩法选项',
+        opt_lucky6: '开启“幸运6” (庄6点赢)',
+        odds_lucky6: '赔率: 1:12,20(2張3張)/1:12 (2张) / 1:20 (3张)',
+        opt_lucky7: '开启“幸运7” (闲7赢)',
+        odds_lucky7: '赔率: 1:6 (2张) / 1:15 (3张)',
+        opt_super_lucky7: '开启“超级幸运7” (闲7赢庄6)',
+        odds_super_lucky7: '赔率: 1:30 (4张) / 1:40 (5张) / 1:100 (6张)',
+        btn_start: '开始游戏',
+        btn_continue: '继续游戏',
+        buyin_amount: '买码金额',
+        add_amount: '增加金额',
+        table_limit_display: '台红: 25-150万',
+        player_label: '闲 (Player)',
+        banker_label: '庄 (Banker)',
+        lucky7: '幸运7',
+        super_lucky7: '超幸7',
+        lucky6: '幸6(2/3)',
+        lucky6_2: '幸6(2张)',
+        lucky6_3: '幸6(3张)',
+        player_pair: '闲对',
+        tie: '和',
+        banker_pair: '庄对',
+        player_main: '闲',
+        banker_main: '庄',
+        balance_label: '余额:',
+        stat_total: '总:',
+        stat_banker: '庄:',
+        stat_player: '闲:',
+        stat_tie: '和:',
+        stat_bpair: '庄对:',
+        stat_ppair: '闲对:',
+        stat_lucky6: '幸6:',
+        stat_lucky7: '幸7:',
+        btn_clear: '清除',
+        btn_rebet: '重下',
+        btn_deal: '发牌',
+        btn_fly: '飞牌'
+    },
+    'zh-TW': {
+        settings_title: '遊戲設置',
+        table_limit: '台紅限制',
+        commission_mode: '抽水模式',
+        comm_classic: '95桌 (庄贏0.95)',
+        comm_super6: '6點一半 (免傭)',
+        game_options: '玩法選項',
+        opt_lucky6: '開啟“幸運6” (庄6點贏)',
+        odds_lucky6: '賠率: 1:12,20(2張3張)/1:12 (2張) / 1:20 (3張)',
+        opt_lucky7: '開啟“幸運7” (閑7贏)',
+        odds_lucky7: '賠率: 1:6 (2張) / 1:15 (3張)',
+        opt_super_lucky7: '開啟“超級幸運7” (閑7贏庄6)',
+        odds_super_lucky7: '賠率: 1:30 (4張) / 1:40 (5張) / 1:100 (6張)',
+        btn_start: '開始遊戲',
+        btn_continue: '繼續遊戲',
+        buyin_amount: '買碼金額',
+        add_amount: '增加金額',
+        table_limit_display: '台紅: 25-150萬',
+        player_label: '閑 (Player)',
+        banker_label: '庄 (Banker)',
+        lucky7: '幸運7',
+        super_lucky7: '超幸7',
+        lucky6: '幸6(2/3)',
+        lucky6_2: '幸6(2張)',
+        lucky6_3: '幸6(3張)',
+        player_pair: '閑對',
+        tie: '和',
+        banker_pair: '庄對',
+        player_main: '閑',
+        banker_main: '庄',
+        balance_label: '餘額:',
+        stat_total: '總:',
+        stat_banker: '庄:',
+        stat_player: '閑:',
+        stat_tie: '和:',
+        stat_bpair: '庄對:',
+        stat_ppair: '閑對:',
+        stat_lucky6: '幸6:',
+        stat_lucky7: '幸7:',
+        btn_clear: '清除',
+        btn_rebet: '重下',
+        btn_deal: '發牌',
+        btn_fly: '飛牌'
+    }
+};
+
+let currentLang = 'zh-CN';
+
+function updateLanguage(lang) {
+    currentLang = lang;
+    const t = TRANSLATIONS[lang];
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (t[key]) {
+            el.textContent = t[key];
+        }
+    });
+    
+    // Update dynamic text if needed
+    if (typeof game !== 'undefined' && game) {
+        game.updateDealButtonState();
+        game.updateClearButtonState();
+        
+        // Update Settings Modal dynamic text
+        const buyinLabel = document.querySelector('label[data-i18n="buyin_amount"]');
+        const btnStart = document.getElementById('btn-start-game');
+        
+        if (buyinLabel) buyinLabel.textContent = t[game.started ? 'add_amount' : 'buyin_amount'];
+        // Use game existence to determine if it's 'continue' or 'start', reusing logic
+        if (btnStart) btnStart.textContent = t['btn_continue']; // If game exists, it's continue
+    } else {
+        const buyinLabel = document.querySelector('label[data-i18n="buyin_amount"]');
+        const btnStart = document.getElementById('btn-start-game');
+        if (buyinLabel) buyinLabel.textContent = t['buyin_amount'];
+        if (btnStart) btnStart.textContent = t['btn_start'];
+    }
+}
+
 window.__roadDebug = window.__roadDebug ?? false;
 
 // 全局状态：珠仔路索引
@@ -363,18 +487,23 @@ class RoadMap {
                 color = 'banker'; // 红
             }
         } else {
+            // 向右（换列）规则：
+            // 基于列长度对比 (标准规则)
+            // 比较“当前列”（刚刚完成的那一列，colIndex - 1）与“参考列”（current - offset）
             const currentColumnIdx = colIndex - 1;
             const prevColumnIdx = currentColumnIdx - offset;
             
+            // 获取列长度（注意：bigRoad.columns 存储的是逻辑长度，忽略和）
             const lenCurr = bigRoad.columns[currentColumnIdx]?.length || 0;
             const lenPrev = bigRoad.columns[prevColumnIdx]?.length || 0;
             
-            const diff = lenCurr - lenPrev;
-            
-            if (diff === 1) {
-                color = 'player'; // 蓝
-            } else {
+            // 标准规则：
+            // 长度相同 (齐头) -> 红
+            // 长度不同 (不齐) -> 蓝
+            if (lenCurr === lenPrev) {
                 color = 'banker'; // 红
+            } else {
+                color = 'player'; // 蓝
             }
         }
         return color;
@@ -395,10 +524,31 @@ class RoadMap {
 
         // 决定是否换列：若与上次颜色不同，则开启新列；否则在当前列继续
         let targetCol, row, color;
+        
+        // 如果是该路单的第一次绘制（lastColor === null），强制归零
+        if (lastColor === null) {
+             this.colorData.startCol = 0;
+             this.colorData.currCol = 0;
+             this.colorData.currRow = 0;
+             this.colorData.lastStartCol = -1;
+        }
+
         if (lastColor === null || colorIfNewCol !== lastColor) {
             // 切换颜色 -> 新列起始
             this.colorData.lastStartCol = this.colorData.startCol;
             this.colorData.startCol = this.colorData.lastStartCol + 1;
+            
+            // 修正：如果是第一次绘制（lastColor was null），startCol 应该是 0，而不是 lastStartCol(-1) + 1 = 0.
+            // Wait, logic above: if lastColor is null, startCol=0, lastStartCol=-1.
+            // Then here: lastStartCol(which is -1) + 1 = 0. Correct.
+            // BUT, if startCol was already set to something else by global logic?
+            // Yes, we forced it to 0 above.
+            
+            // 特殊修正：如果是第一次绘制，确保 startCol 为 0 (覆盖上面的 +1 逻辑，虽然结果也是 0)
+            if (lastColor === null) {
+                this.colorData.startCol = 0;
+            }
+            
             targetCol = this.colorData.startCol;
             row = 0;
             this.colorData.currCol = targetCol;
@@ -513,6 +663,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
     beadRoad = new BeadRoad('zhuzailu', CONFIG.zhuzailu);
     
+    // Initialize Language
+    document.querySelectorAll('input[name="language"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            updateLanguage(e.target.value);
+        });
+    });
+    // Set initial language
+    updateLanguage('zh-CN');
+    
     // 初始化时显示弹窗，不直接初始化游戏
     const modal = document.getElementById('settings-modal');
     const btnStart = document.getElementById('btn-start-game');
@@ -533,7 +692,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnStart.addEventListener('click', () => {
         // 获取设置
         const buyinRaw = document.getElementById('setting-buyin').value.replace(/,/g, '');
-        const buyin = parseInt(buyinRaw) || 10000;
+        const buyinAmount = parseInt(buyinRaw) || 0;
         const limitStr = document.getElementById('setting-limit').value;
         const [minLimit, maxLimit] = limitStr.split('-').map(Number);
         
@@ -542,21 +701,67 @@ document.addEventListener('DOMContentLoaded', () => {
         const lucky7 = document.getElementById('setting-lucky7').checked;
         const superLucky7 = document.getElementById('setting-super-lucky7').checked;
         
-        const config = {
-            balance: buyin,
-            minLimit,
-            maxLimit,
-            commissionMode,
-            sideBets: {
-                lucky6,
-                lucky7,
-                superLucky7
+        if (game) {
+            // Update existing game
+            if (buyinAmount > 0) {
+                game.balance += buyinAmount;
+                game.totalBuyin = (game.totalBuyin || 0) + buyinAmount;
+                game.updateBalanceUI();
             }
-        };
+            
+            // Update config
+            game.config.minLimit = minLimit;
+            game.config.maxLimit = maxLimit;
+            game.config.commissionMode = commissionMode;
+            game.config.sideBets.lucky6 = lucky6;
+            game.config.sideBets.lucky7 = lucky7;
+            game.config.sideBets.superLucky7 = superLucky7;
+            
+            // Re-apply settings to UI
+            game.initUI(); 
+        } else {
+            // New Game
+            const initialBalance = buyinAmount || 10000;
+            const config = {
+                balance: initialBalance,
+                minLimit,
+                maxLimit,
+                commissionMode,
+                sideBets: {
+                    lucky6,
+                    lucky7,
+                    superLucky7
+                }
+            };
+            game = new BaccaratGame(config);
+        }
         
-        game = new BaccaratGame(config);
+        // Update Table Limit Display
+        const limitDisplay = document.getElementById('table-limit-display');
+        if (limitDisplay) {
+            // Format numbers: 25 -> 25, 1500000 -> 150万
+            const formatLimit = (num) => {
+                if (num >= 10000) return (num / 10000) + '万';
+                return num;
+            };
+            limitDisplay.textContent = `台红: ${formatLimit(minLimit)}-${formatLimit(maxLimit)}`;
+        }
+
         modal.style.display = 'none';
     });
+
+    // Settings Toggle Button
+    const btnSettingsToggle = document.getElementById('btn-settings-toggle');
+    if (btnSettingsToggle) {
+        btnSettingsToggle.addEventListener('click', () => {
+            updateLanguage(currentLang);
+            if (game) {
+                const buyinInput = document.getElementById('setting-buyin');
+                if (buyinInput) buyinInput.value = '0';
+            }
+            modal.style.display = 'flex';
+        });
+    }
     
     // 绑定重置按钮
     /*
@@ -580,6 +785,7 @@ class BaccaratGame {
         };
         
         this.balance = this.config.balance;
+        this.totalBuyin = this.config.balance; // Track total buy-in for color logic
         
         this.deck = [];
         this.bet = {
@@ -753,7 +959,30 @@ class BaccaratGame {
     }
     
     updateBalanceUI() {
-        document.getElementById('balance-amount').textContent = this.balance.toLocaleString();
+        const el = document.getElementById('balance-amount');
+        if (!el) return;
+        
+        el.textContent = this.balance.toLocaleString();
+        
+        // Dynamic Color Logic
+        // 总买入金额+-40%为白色, >-40%~-80%为黃色, >-80%~-100%为紅色, >40%~100%为綠色
+        const profit = this.balance - this.totalBuyin;
+        let percent = 0;
+        if (this.totalBuyin > 0) {
+            percent = profit / this.totalBuyin;
+        }
+        
+        el.classList.remove('text-color-white', 'text-color-yellow', 'text-color-red', 'text-color-green');
+        
+        if (percent > 0.4) {
+            el.classList.add('text-color-green');
+        } else if (percent < -0.8) {
+            el.classList.add('text-color-red');
+        } else if (percent < -0.4) {
+            el.classList.add('text-color-yellow');
+        } else {
+            el.classList.add('text-color-white');
+        }
     }
 
     updateStats(winner, pPair, bPair, isLucky6, isLucky7) {
@@ -792,7 +1021,7 @@ class BaccaratGame {
         const totalBet = Object.values(this.bet).reduce((a, b) => a + b, 0);
         const btnDeal = document.getElementById('btn-deal');
         if (btnDeal) {
-            btnDeal.textContent = totalBet > 0 ? '发牌' : '飞牌';
+            btnDeal.textContent = totalBet > 0 ? TRANSLATIONS[currentLang]['btn_deal'] : TRANSLATIONS[currentLang]['btn_fly'];
         }
     }
 
@@ -800,7 +1029,7 @@ class BaccaratGame {
         const totalBet = Object.values(this.bet).reduce((a, b) => a + b, 0);
         const btnClear = document.getElementById('btn-clear');
         if (btnClear) {
-            btnClear.textContent = totalBet > 0 ? '清除' : '重下';
+            btnClear.textContent = totalBet > 0 ? TRANSLATIONS[currentLang]['btn_clear'] : TRANSLATIONS[currentLang]['btn_rebet'];
         }
     }
 
@@ -1015,9 +1244,30 @@ class BaccaratGame {
         
         // 第3张牌（补牌）添加特殊样式
         const isThird = handArr.length === 3;
-        cardEl.className = `card ${card.isRed ? 'red' : 'black'} ${isThird ? 'horizontal' : ''}`;
+        cardEl.className = `card ${isThird ? 'horizontal' : ''}`;
         
-        cardEl.innerHTML = `${card.suit}<br>${card.rank}`;
+        // Calculate Sprite Position
+        // Image Rows: 0:Club, 1:Diamond, 2:Heart, 3:Spade
+        const suitMap = {
+            '♠': 3, // Spades -> Row 4 (Index 3)
+            '♥': 2, // Hearts -> Row 3 (Index 2)
+            '♣': 0, // Clubs -> Row 1 (Index 0)
+            '♦': 1  // Diamonds -> Row 2 (Index 1)
+        };
+        
+        const rankMap = {
+            'A': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6,
+            '8': 7, '9': 8, '10': 9, 'J': 10, 'Q': 11, 'K': 12
+        };
+        
+        const suitIdx = suitMap[card.suit];
+        const rankIdx = rankMap[card.rank];
+        
+        const xPos = (rankIdx * 100 / 12).toFixed(4) + '%';
+        const yPos = (suitIdx * 100 / 4).toFixed(4) + '%';
+        
+        cardEl.style.backgroundPosition = `${xPos} ${yPos}`;
+
         // 动画
         cardEl.style.opacity = '0';
         cardEl.style.transform = 'translateY(-20px)';
@@ -1189,8 +1439,37 @@ class BaccaratGame {
             // Re-trigger animation
             overlay.style.animation = 'none';
             overlay.offsetHeight; /* trigger reflow */
-            overlay.style.animation = 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            overlay.style.animation = 'moveFromCenter 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
         }
+
+        // Highlight winning buttons
+        const winningIds = [];
+        if (winner === 'player') winningIds.push('bet-player');
+        if (winner === 'banker') winningIds.push('bet-banker');
+        if (winner === 'tie') winningIds.push('bet-tie');
+        
+        if (pPair) winningIds.push('bet-player-pair');
+        if (bPair) winningIds.push('bet-banker-pair');
+        
+        if (bankerWin6) {
+            winningIds.push('bet-lucky6');
+            if (bankerCardsCount === 2) winningIds.push('bet-lucky6-2');
+            if (bankerCardsCount === 3) winningIds.push('bet-lucky6-3');
+        }
+        
+        if (playerWin7) winningIds.push('bet-lucky7');
+        
+        if (superCondition) winningIds.push('bet-super-lucky7');
+        
+        winningIds.forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.classList.add('win-flash');
+                setTimeout(() => {
+                    btn.classList.remove('win-flash');
+                }, 1500);
+            }
+        });
         
         // Update Stats
         this.updateStats(winner, pPair, bPair, bankerWin6, playerWin7);

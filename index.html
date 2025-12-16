@@ -10,17 +10,23 @@
     <div class="container">
         <!-- 游戏区 -->
         <div class="game-area">
+            <!-- Table Limit Display -->
+            <div id="table-limit-display" class="table-limit-display" data-i18n="table_limit_display">台红: 25-150万</div>
+            
+            <!-- Settings Button -->
+            <button id="btn-settings-toggle" class="btn-settings-toggle">⚙️</button>
+            
             <!-- 发牌/显示区 -->
             <div class="deal-area">
                 <div class="hand player-hand">
-                    <div class="hand-title text-player">闲 (Player) <span id="score-player" class="score">0</span></div>
+                    <div class="hand-title text-player"><span data-i18n="player_label">闲 (Player)</span> <span id="score-player" class="score">0</span></div>
                     <div class="cards-box" id="cards-player">
                         <!-- <div class="card"></div> -->
                     </div>
                 </div>
                 <div class="vs-divider">VS</div>
                 <div class="hand banker-hand">
-                    <div class="hand-title text-banker">庄 (Banker) <span id="score-banker" class="score">0</span></div>
+                    <div class="hand-title text-banker"><span data-i18n="banker_label">庄 (Banker)</span> <span id="score-banker" class="score">0</span></div>
                     <div class="cards-box" id="cards-banker">
                         <!-- <div class="card"></div> -->
                     </div>
@@ -35,48 +41,48 @@
                     <!-- Top Row Container for Side Bets -->
                     <div class="side-bets-row">
                         <button class="bet-btn bet-lucky7" id="bet-lucky7">
-                            <div class="side-label">幸运7</div>
+                            <div class="side-label" data-i18n="lucky7">幸运7</div>
                             <div class="odds">1:6/15</div>
                         </button>
                         <button class="bet-btn bet-super-lucky7" id="bet-super-lucky7">
-                            <div class="side-label">超幸7</div>
+                            <div class="side-label" data-i18n="super_lucky7">超幸7</div>
                             <div class="odds">1:30+</div>
                         </button>
                         <button class="bet-btn bet-lucky6" id="bet-lucky6">
-                            <div class="side-label">幸6(2/3)</div>
+                            <div class="side-label" data-i18n="lucky6">幸6(2/3)</div>
                             <div class="odds">1:12/20</div>
                         </button>
                         <button class="bet-btn bet-lucky6-2" id="bet-lucky6-2">
-                            <div class="side-label">幸6(2张)</div>
+                            <div class="side-label" data-i18n="lucky6_2">幸6(2张)</div>
                             <div class="odds">1:22</div>
                         </button>
                         <button class="bet-btn bet-lucky6-3" id="bet-lucky6-3">
-                            <div class="side-label">幸6(3张)</div>
+                            <div class="side-label" data-i18n="lucky6_3">幸6(3张)</div>
                             <div class="odds">1:50</div>
                         </button>
                     </div>
 
                     <!-- Pairs & Tie (Row 2) -->
                     <button class="bet-btn bet-player-pair" id="bet-player-pair">
-                        <div>闲对</div>
+                        <div data-i18n="player_pair">闲对</div>
                         <div class="odds">1:11</div>
                     </button>
                     <button class="bet-btn bet-tie" id="bet-tie">
-                        <div>和</div>
+                        <div data-i18n="tie">和</div>
                         <div class="odds">1:8</div>
                     </button>
                     <button class="bet-btn bet-banker-pair" id="bet-banker-pair">
-                        <div>庄对</div>
+                        <div data-i18n="banker_pair">庄对</div>
                         <div class="odds">1:11</div>
                     </button>
                     
                     <!-- Main Bets (Bottom) -->
                     <button class="bet-btn bet-player-main" id="bet-player">
-                        <div class="main-label">闲</div>
+                        <div class="main-label" data-i18n="player_main">闲</div>
                         <div class="odds">1:1</div>
                     </button>
                     <button class="bet-btn bet-banker-main" id="bet-banker">
-                        <div class="main-label">庄</div>
+                        <div class="main-label" data-i18n="banker_main">庄</div>
                         <div class="odds" id="banker-odds">0.95:1</div>
                     </button>
                 </div>
@@ -84,16 +90,16 @@
                 <!-- 操作栏 -->
                 <div class="controls-bar">
                     <div class="balance-stats-wrapper">
-                        <div class="balance-display-overlay">余额: <span id="balance-amount">10,000</span></div>
+                        <div class="balance-display-overlay"><span data-i18n="balance_label">余额:</span> <span id="balance-amount" class="text-color-white">10,000</span></div>
                         <div class="game-stats-display">
-                            <span>总:<b id="stat-total">0</b></span>
-                            <span class="stat-banker">庄:<b id="stat-banker">0</b></span>
-                            <span class="stat-player">闲:<b id="stat-player">0</b></span>
-                            <span class="stat-tie">和:<b id="stat-tie">0</b></span>
-                            <span class="stat-banker">庄对:<b id="stat-bpair">0</b></span>
-                            <span class="stat-player">闲对:<b id="stat-ppair">0</b></span>
-                            <span>幸6:<b id="stat-lucky6">0</b></span>
-                            <span>幸7:<b id="stat-lucky7">0</b></span>
+                            <span><span data-i18n="stat_total">总:</span><b id="stat-total">0</b></span>
+                            <span class="stat-banker"><span data-i18n="stat_banker">庄:</span><b id="stat-banker">0</b></span>
+                            <span class="stat-player"><span data-i18n="stat_player">闲:</span><b id="stat-player">0</b></span>
+                            <span class="stat-tie"><span data-i18n="stat_tie">和:</span><b id="stat-tie">0</b></span>
+                            <span class="stat-banker"><span data-i18n="stat_bpair">庄对:</span><b id="stat-bpair">0</b></span>
+                            <span class="stat-player"><span data-i18n="stat_ppair">闲对:</span><b id="stat-ppair">0</b></span>
+                            <span><span data-i18n="stat_lucky6">幸6:</span><b id="stat-lucky6">0</b></span>
+                            <span><span data-i18n="stat_lucky7">幸7:</span><b id="stat-lucky7">0</b></span>
                         </div>
                     </div>
                     <div class="chips-scroll-wrapper">
@@ -110,8 +116,8 @@
                         <button class="chip-scroll-btn" id="chip-scroll-right">&gt;</button>
                     </div>
                     <div class="action-group">
-                        <button id="btn-clear" class="btn-action btn-clear">清除</button>
-                        <button id="btn-deal" class="btn-action btn-deal">发牌</button>
+                        <button id="btn-clear" class="btn-action btn-clear" data-i18n="btn_clear">清除</button>
+                        <button id="btn-deal" class="btn-action btn-deal" data-i18n="btn_deal">发牌</button>
                     </div>
                 </div>
             </div>
@@ -140,15 +146,29 @@
     <!-- 游戏设置弹窗 -->
     <div id="settings-modal" class="modal">
         <div class="modal-content">
-            <h2>游戏设置</h2>
+            <h2 data-i18n="settings_title">游戏设置</h2>
             
             <div class="form-group">
-                <label>买码金额</label>
+                <label>语言 / Language</label>
+                <div class="radio-group horizontal-group">
+                    <label class="radio-label">
+                        <input type="radio" name="language" value="zh-CN" checked>
+                        简体中文
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="language" value="zh-TW">
+                        繁體中文
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label data-i18n="buyin_amount">买码金额</label>
                 <input type="text" id="setting-buyin" value="10,000">
             </div>
 
             <div class="form-group">
-                <label>台红限制</label>
+                <label data-i18n="table_limit">台红限制</label>
                 <select id="setting-limit">
                     <option value="25-1500000">25 - 1,500,000</option>
                     <option value="500-1500000">500 - 1,500,000</option>
@@ -160,47 +180,47 @@
             </div>
 
             <div class="form-group">
-                <label>抽水模式</label>
+                <label data-i18n="commission_mode">抽水模式</label>
                 <div class="radio-group">
                     <label class="radio-label">
                         <input type="radio" name="commission" value="classic">
-                        95桌 (庄赢0.95)
+                        <span data-i18n="comm_classic">95桌 (庄赢0.95)</span>
                     </label>
                     <label class="radio-label">
                         <input type="radio" name="commission" value="super6" checked>
-                        6点一半 (免佣)
+                        <span data-i18n="comm_super6">6点一半 (免佣)</span>
                     </label>
                 </div>
             </div>
 
             <div class="form-group">
-                <label>玩法选项</label>
+                <label data-i18n="game_options">玩法选项</label>
                 <div class="checkbox-group">
                     <label class="checkbox-label">
                         <input type="checkbox" id="setting-lucky6" checked>
                         <div>
-                            开启“幸运6” (庄6点赢)
-                            <div class="setting-odds">赔率: 1:12,20(2張3張)/1:12 (2张) / 1:20 (3张)</div>
+                            <span data-i18n="opt_lucky6">开启“幸运6” (庄6点赢)</span>
+                            <div class="setting-odds" data-i18n="odds_lucky6">赔率: 1:12,20(2張3張)/1:12 (2张) / 1:20 (3张)</div>
                         </div>
                     </label>
                     <label class="checkbox-label">
                         <input type="checkbox" id="setting-lucky7" checked>
                         <div>
-                            开启“幸运7” (闲7赢)
-                            <div class="setting-odds">赔率: 1:6 (2张) / 1:15 (3张)</div>
+                            <span data-i18n="opt_lucky7">开启“幸运7” (闲7赢)</span>
+                            <div class="setting-odds" data-i18n="odds_lucky7">赔率: 1:6 (2张) / 1:15 (3张)</div>
                         </div>
                     </label>
                     <label class="checkbox-label">
                         <input type="checkbox" id="setting-super-lucky7" checked>
                         <div>
-                            开启“超级幸运7” (闲7赢庄6)
-                            <div class="setting-odds">赔率: 1:30 (4张) / 1:40 (5张) / 1:100 (6张)</div>
+                            <span data-i18n="opt_super_lucky7">开启“超级幸运7” (闲7赢庄6)</span>
+                            <div class="setting-odds" data-i18n="odds_super_lucky7">赔率: 1:30 (4张) / 1:40 (5张) / 1:100 (6张)</div>
                         </div>
                     </label>
                 </div>
             </div>
 
-            <button id="btn-start-game" class="btn-primary">开始游戏</button>
+            <button id="btn-start-game" class="btn-primary" data-i18n="btn_start">开始游戏</button>
         </div>
     </div>
 
