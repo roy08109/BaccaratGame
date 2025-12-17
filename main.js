@@ -172,6 +172,13 @@ class RoadMap {
     }
 
     initDOM() {
+        // Dynamic Init Styles
+        this.container.style.gridTemplateColumns = `repeat(${this.cols}, 1fr)`;
+        const ratio = this.cols / 6.3; // Slight adjustment for borders
+        this.container.style.aspectRatio = `${ratio}`;
+        this.container.style.overflowX = 'auto';
+        this.container.style.scrollbarWidth = 'none';
+
         this.container.innerHTML = '';
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
@@ -183,9 +190,98 @@ class RoadMap {
 
                 cell.dataset.row = r;
                 cell.dataset.col = c;
+                
+                if (c === this.cols - 1) {
+                    cell.classList.add('last-col');
+                }
+                
                 this.container.appendChild(cell);
             }
         }
+    }
+
+    clear() {
+        // Reset Grid Data
+        this.grid = Array(this.rows).fill(null).map(() => Array(this.cols).fill(null));
+        
+        // Reset Logic Data
+        this.colorData = {
+            lastColor: null, 
+            lastStartCol: -1, 
+            startCol: 0, 
+            currRow: 0, 
+            currCol: 0,
+            clickCnt: 0, 
+            turned: false, 
+            isStuck: false, 
+            numShowCount: 0, 
+            numberMode: false 
+        };
+
+        if (this.type === 'dalu') {
+            this.columns = [];
+            this.currentColumnIndex = -1;
+        }
+
+        this.enabled = this.type === 'dalu' || this.type === 'bead' ? true : false;
+        this.enableNext = false;
+
+        // Reset DOM (keep current columns size or reset? User implied "add 10 cols when < 3", suggesting dynamic size persists or we check again. 
+        // Usually 'Clear' resets the view. But if we reset to 30 cols, we lose the expansion history.
+        // However, standard baccarat clears to default.
+        // Let's reset DOM to current cols (clearing content) to be safe, or rebuild.
+        // initDOM uses this.cols. So if we don't reset this.cols, it keeps size.
+        this.initDOM();
+    }
+
+    expandGrid(count) {
+        const oldCols = this.cols;
+        this.cols += count;
+
+        // Expand Grid Data
+        for (let r = 0; r < this.rows; r++) {
+            for (let i = 0; i < count; i++) {
+                this.grid[r].push(null);
+            }
+        }
+
+        // Expand DOM: Insert 'count' cells at the end of each row
+        // The DOM structure is flat: row0...row1...
+        // We need to insert after (r * oldCols + oldCols - 1) + (r * count) <-- offset by previous insertions
+        // Easier: Select the last cell of each row using data attributes.
+        
+        // We iterate backwards to avoid messing up indices? No, we can query by data attributes.
+        for (let r = 0; r < this.rows; r++) {
+            // Find the last cell of this row (which was at oldCols - 1)
+            const lastCell = this.container.querySelector(`div[data-row="${r}"][data-col="${oldCols - 1}"]`);
+            let referenceNode = lastCell ? lastCell.nextSibling : null;
+            
+            for (let c = oldCols; c < this.cols; c++) {
+                const cell = document.createElement('div');
+                if (this.type === 'dalu') cell.className = 'cell-dalu';
+                else if (this.type === 'bead') cell.className = 'cell-zhuzailu cell-dalu';
+                else cell.className = 'cell-dalu';
+
+                cell.dataset.row = r;
+                cell.dataset.col = c;
+                
+                // Add last-col if it is the last one
+                if (c === this.cols - 1) cell.classList.add('last-col');
+
+                if (referenceNode) {
+                    this.container.insertBefore(cell, referenceNode);
+                } else {
+                    this.container.appendChild(cell);
+                }
+            }
+            // Remove last-col from previous last cell
+            if (lastCell) lastCell.classList.remove('last-col');
+        }
+
+        // Update Styles
+        this.container.style.gridTemplateColumns = `repeat(${this.cols}, 1fr)`;
+        const ratio = this.cols / 6.3;
+        this.container.style.aspectRatio = `${ratio}`;
     }
 
     isOccupied(r, c) {
@@ -270,6 +366,13 @@ class RoadMap {
         if (targetCol >= this.cols) {
             data.isStuck = true; 
         }
+
+        // Check for expansion
+        if (['dalu', 'dayan', 'small', 'cockroach'].includes(this.type)) {
+             if (this.cols - targetCol < 3) {
+                 this.expandGrid(10);
+             }
+        }
         
         // 执行绘制
         if (targetRow < this.rows && targetCol < this.cols && !this.grid[targetRow][targetCol]) {
@@ -347,6 +450,11 @@ class RoadMap {
 
         if (targetCol >= this.cols) {
             data.isStuck = true;
+        }
+
+        // Check for expansion
+        if (this.cols - targetCol < 3) {
+             this.expandGrid(10);
         }
 
         if (targetRow < this.rows && targetCol < this.cols && !this.grid[targetRow][targetCol]) {
@@ -627,6 +735,12 @@ class BeadRoad {
             }
         }
     }
+
+    clear() {
+        zhuzailuIndex = 0;
+        this.container.innerHTML = '';
+        this.initDOM();
+    }
     
     addMarker(winner, text) {
         if (zhuzailuIndex >= 90) return; // Stop
@@ -787,6 +901,9 @@ class BaccaratGame {
         this.balance = this.config.balance;
         this.totalBuyin = this.config.balance; // Track total buy-in for color logic
         
+        // Random Max Rounds (58-72)
+        this.maxRounds = Math.floor(Math.random() * (72 - 58 + 1)) + 58;
+
         this.deck = [];
         this.bet = {
             player: 0,
@@ -1151,6 +1268,20 @@ class BaccaratGame {
     async deal() {
         if (this.isDealing) return;
         
+        // Check Last Round Warning
+        if (this.stats.total + 1 === this.maxRounds) {
+            const overlay = document.getElementById('result-overlay');
+            if (overlay) {
+                overlay.textContent = '最後一局';
+                overlay.classList.remove('hidden');
+                overlay.className = 'result-overlay';
+                
+                // Show for 1.5s then continue
+                await new Promise(r => setTimeout(r, 1500));
+                overlay.classList.add('hidden');
+            }
+        }
+
         // Hide result overlay
         const overlay = document.getElementById('result-overlay');
         if (overlay) overlay.classList.add('hidden');
@@ -1485,6 +1616,13 @@ class BaccaratGame {
         // 更新路单
         handleInput(winner);
         
+        // Check for Game Over (Reset)
+        if (this.stats.total >= this.maxRounds) {
+             setTimeout(() => {
+                 this.resetGame();
+             }, 2000);
+        }
+
         // 清除下注（赢的钱已经加回余额，输的已经扣除）
         // 重置下注UI
         this.bet = {
@@ -1497,6 +1635,45 @@ class BaccaratGame {
             if (marker) marker.remove();
         });
         this.updateClearButtonState();
+    }
+    resetGame() {
+        this.maxRounds = Math.floor(Math.random() * (72 - 58 + 1)) + 58;
+        this.stats = {
+            total: 0, banker: 0, player: 0, tie: 0, 
+            bankerPair: 0, playerPair: 0, lucky6: 0, lucky7: 0
+        };
+        this.updateStatsUI();
+        this.initDeck();
+        
+        // Clear Roads
+        if (roads.dalu) roads.dalu.clear();
+        if (roads.dayan) roads.dayan.clear();
+        if (roads.xiaolu) roads.xiaolu.clear();
+        if (roads.zhanglang) roads.zhanglang.clear();
+        if (beadRoad) beadRoad.clear();
+        
+        // Clear Table
+        this.clearTable();
+        
+        // Reset Bet
+        this.bet = {
+            player: 0, banker: 0, tie: 0, playerPair: 0, bankerPair: 0,
+            lucky6: 0, lucky6_2: 0, lucky6_3: 0, lucky7: 0, superLucky7: 0
+        };
+        document.querySelectorAll('.bet-btn').forEach(btn => {
+            btn.classList.remove('active');
+            const marker = btn.querySelector('.bet-chip-marker');
+            if (marker) marker.remove();
+        });
+        this.updateClearButtonState();
+        
+        // UI Notification
+        const overlay = document.getElementById('result-overlay');
+        if(overlay) {
+             overlay.textContent = '洗牌中...';
+             overlay.classList.remove('hidden');
+             setTimeout(() => overlay.classList.add('hidden'), 1500);
+        }
     }
 }
 
