@@ -16,6 +16,9 @@
             <!-- Settings Button -->
             <button id="btn-settings-toggle" class="btn-settings-toggle">⚙️</button>
             
+            <!-- Music Button (Top Right) -->
+            <button id="btn-music-toggle-main" class="btn-music-toggle-main">🎵</button>
+            
             <!-- 发牌/显示区 -->
             <div class="deal-area">
                 <div class="hand player-hand">
@@ -33,6 +36,10 @@
                 </div>
                 <!-- 结果显示 -->
                 <div id="result-overlay" class="result-overlay hidden"></div>
+                <!-- Video Overlay -->
+                <div id="video-overlay" class="video-overlay hidden">
+                    <video id="game-video" playsinline muted></video>
+                </div>
             </div>
 
             <!-- 下注区 -->
@@ -136,9 +143,25 @@
                     <div class="grid-small" id="zhanglang"></div>
                 </div>
                 <div class="zhuzailu-table-wrap">
-                    <div class="grid-zhuzailu" id="zhuzailu"></div>
-                </div>
+              <div class="grid-zhuzailu" id="zhuzailu"></div>
+              
+              <!-- Prediction Board (Ask Road) -->
+              <div class="prediction-board" id="prediction-board">
+                  <div class="pred-row">
+                      <div class="pred-label"><span class="pred-indicator red"></span><span data-i18n="banker_main">庄</span></div>
+                      <div class="pred-cell" id="pred-banker-dayan"></div>
+                      <div class="pred-cell" id="pred-banker-small"></div>
+                      <div class="pred-cell" id="pred-banker-cockroach"></div>
+                  </div>
+                  <div class="pred-row">
+                      <div class="pred-label"><span class="pred-indicator blue"></span><span data-i18n="player_main">闲</span></div>
+                      <div class="pred-cell" id="pred-player-dayan"></div>
+                      <div class="pred-cell" id="pred-player-small"></div>
+                      <div class="pred-cell" id="pred-player-cockroach"></div>
+                  </div>
+              </div>
             </div>
+          </div>
         </div>
         
     </div>
@@ -159,6 +182,18 @@
                         <input type="radio" name="language" value="zh-TW">
                         繁體中文
                     </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label data-i18n="music_settings">音乐设置 / Music</label>
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                    <button id="btn-music-toggle" class="btn-music-control">🔇</button>
+                    <span id="music-status-text">关闭</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 14px;">Volume:</span>
+                    <input type="range" id="music-volume" min="0" max="1" step="0.1" value="0.5" style="flex: 1;">
                 </div>
             </div>
 

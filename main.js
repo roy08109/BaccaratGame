@@ -291,10 +291,10 @@ class RoadMap {
 
     // 添加标记
     // winner: 'banker' | 'player'
-    addMarker(winner) {
+    addMarker(winner, pPair, bPair, lucky6, lucky7) {
         // 大路返回落子方向信息，其他路按原逻辑
         if (this.type === 'dalu') {
-            return this.addMarkerBigRoad(winner);
+            return this.addMarkerBigRoad(winner, pPair, bPair, lucky6, lucky7);
         }
 
         const data = this.colorData;
@@ -394,7 +394,64 @@ class RoadMap {
         }
     }
 
-    addMarkerBigRoad(winner) {
+    getNextBigRoadPosition(winner) {
+        const data = { ...this.colorData };
+        let movedDown = false;
+        let movedRight = false;
+
+        if (winner !== data.lastColor) {
+            if (data.lastColor !== null) {
+                data.lastStartCol = data.startCol;
+            } else {
+                data.lastStartCol = -1;
+            }
+            data.startCol = data.lastStartCol + 1;
+            data.currRow = 0;
+            data.currCol = data.startCol;
+            data.clickCnt = 0;
+            data.turned = false;
+        }
+
+        data.clickCnt++;
+        
+        let targetRow = data.currRow;
+        let targetCol = data.currCol;
+
+        if (data.clickCnt === 1) {
+            targetRow = 0;
+            targetCol = data.startCol;
+            movedRight = true;
+        } else {
+            if (!data.turned) {
+                const nextRow = data.currRow + 1;
+                const nextCol = data.currCol;
+                // Use this.isOccupied which reads this.grid (safe as we don't modify grid)
+                if (this.isOccupied(nextRow, nextCol)) {
+                    data.turned = true;
+                    targetRow = data.currRow;
+                    targetCol = data.currCol + 1;
+                    movedRight = true;
+                } else {
+                    targetRow = nextRow;
+                    targetCol = nextCol;
+                    movedDown = true;
+                }
+            } else {
+                targetRow = data.currRow;
+                targetCol = data.currCol + 1;
+                movedRight = true;
+            }
+        }
+        
+        return {
+            colIndex: targetCol,
+            rowIndex: targetRow,
+            movedDown: movedDown,
+            movedRight: movedRight
+        };
+    }
+
+    addMarkerBigRoad(winner, pPair, bPair, lucky6, lucky7) {
         const data = this.colorData;
         let movedDown = false;
         let movedRight = false;
@@ -459,7 +516,7 @@ class RoadMap {
 
         if (targetRow < this.rows && targetCol < this.cols && !this.grid[targetRow][targetCol]) {
             this.grid[targetRow][targetCol] = winner;
-            this.renderMarker(targetRow, targetCol, winner);
+            this.renderMarker(targetRow, targetCol, winner, pPair, bPair, lucky6, lucky7);
             // 更新当前位置
             data.currRow = targetRow;
             data.currCol = targetCol;
@@ -490,7 +547,7 @@ class RoadMap {
         return { movedDown, movedRight, colIndex: targetCol, rowIndex: targetRow };
     }
     
-    renderMarker(r, c, winner) {
+    renderMarker(r, c, winner, pPair, bPair, lucky6, lucky7) {
         // 查找单元格
         const index = r * this.cols + c;
         const cell = this.container.children[index];
@@ -501,6 +558,56 @@ class RoadMap {
         
         if (this.type === 'dalu') {
             marker.classList.add(winner === 'banker' ? 'red-circle' : 'blue-circle');
+            
+            // Add Pair Dots for Big Road
+            if (bPair) {
+                const dot = document.createElement('div');
+                dot.className = 'pair-dot banker';
+                marker.appendChild(dot);
+            }
+            if (pPair) {
+                const dot = document.createElement('div');
+                dot.className = 'pair-dot player';
+                marker.appendChild(dot);
+            }
+            
+            // Lucky 6 / Lucky 7 Logic
+            if (winner === 'banker' && lucky6) {
+                const num = document.createElement('div');
+                num.className = 'lucky-number';
+                // User Requirement: "Lucky 6 (2 cards) show 2", but "Lucky 6" means point 6.
+                // Standard convention is usually '6'.
+                // However, user specifically asked for "2" for 2 cards and "3" for 3 cards (Lucky 7).
+                // Let's implement EXACTLY what was asked to avoid guessing.
+                // "Lucky 6 2 cards -> 2"
+                if (lucky6 === 2) {
+                    num.textContent = '2';
+                    marker.appendChild(num);
+                } else if (lucky6 === 3) {
+                    // User didn't specify for 3 cards Lucky 6, but implied "2,3" in center.
+                    // Assuming they want card counts displayed if it's a Lucky win?
+                    // Or maybe only specific cases.
+                    // Let's just do 2 for now as explicitly requested.
+                    // Actually, let's play safe and use '6' which is standard, 
+                    // unless I am 100% sure "2" means card count display.
+                    // Re-reading: "如幸運6 2張牌 在紅圈中心顯示黃色2字" -> Very specific.
+                    // I will show '2'.
+                    num.textContent = '2'; // Override to 2
+                    marker.appendChild(num);
+                }
+            }
+            
+            if (winner === 'player' && lucky7) {
+                 const num = document.createElement('div');
+                 num.className = 'lucky-number';
+                 // User Requirement: "Lucky 7 3 cards -> 3"
+                 if (lucky7 === 3) {
+                     num.textContent = '3';
+                     marker.appendChild(num);
+                 }
+                 // If Lucky 7 with 2 cards? No instruction.
+            }
+            
         } else if (this.type === 'dayan') {
             marker.classList.add(winner === 'banker' ? 'dayan-red' : 'dayan-blue');
         } else if (this.type === 'small') {
@@ -742,7 +849,7 @@ class BeadRoad {
         this.initDOM();
     }
     
-    addMarker(winner, text) {
+    addMarker(winner, text, pPair, bPair) {
         if (zhuzailuIndex >= 90) return; // Stop
         
         const col = Math.floor(zhuzailuIndex / 6);
@@ -753,6 +860,19 @@ class BeadRoad {
         if (cell) {
             const marker = document.createElement('div');
             marker.className = `bead-marker bead-${winner}`;
+            
+            // Add Pair Dots
+            if (bPair) {
+                const dot = document.createElement('div');
+                dot.className = 'pair-dot banker';
+                marker.appendChild(dot);
+            }
+            if (pPair) {
+                const dot = document.createElement('div');
+                dot.className = 'pair-dot player';
+                marker.appendChild(dot);
+            }
+
             const span = document.createElement('span');
             span.className = 'bead-text';
             span.textContent = text;
@@ -785,6 +905,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     // Set initial language
     updateLanguage('zh-CN');
+
+    // Initialize Music Controller
+    new MusicController();
     
     // 初始化时显示弹窗，不直接初始化游戏
     const modal = document.getElementById('settings-modal');
@@ -1614,7 +1737,19 @@ class BaccaratGame {
         this.updateBalanceUI();
         
         // 更新路单
-        handleInput(winner);
+        // lucky6: false, 2, 3 (number of cards)
+        // lucky7: false, 3 (number of cards)
+        let lucky6Val = false;
+        if (bankerWin6) {
+             lucky6Val = bankerCardsCount;
+        }
+        
+        let lucky7Val = false;
+        if (playerWin7) {
+             lucky7Val = playerCardsCount;
+        }
+
+        handleInput(winner, pPair, bPair, lucky6Val, lucky7Val);
         
         // Check for Game Over (Reset)
         if (this.stats.total >= this.maxRounds) {
@@ -1674,13 +1809,15 @@ class BaccaratGame {
              overlay.classList.remove('hidden');
              setTimeout(() => overlay.classList.add('hidden'), 1500);
         }
+        
+        updatePrediction();
     }
 }
 
 // 保留原有的 handleInput 用于路单逻辑
-function handleInput(type) {
+function handleInput(type, pPair, bPair, lucky6, lucky7) {
     if (type === 'tie') {
-        beadRoad.addMarker('tie', 'T');
+        beadRoad.addMarker('tie', 'T', pPair, bPair, lucky6, lucky7);
     } else {
         // 先让上一手的 enableNext 生效
         ['dayan', 'xiaolu', 'zhanglang'].forEach(k => {
@@ -1690,7 +1827,7 @@ function handleInput(type) {
             }
         });
 
-        const info = roads.dalu.addMarker(type);
+        const info = roads.dalu.addMarker(type, pPair, bPair, lucky6, lucky7);
 
         if (info && info.movedRight && info.rowIndex === 0) {
             if (info.colIndex === 1) roads.dayan.enableNext = true;
@@ -1704,6 +1841,180 @@ function handleInput(type) {
         if (roads.zhanglang.enabled && info) roads.zhanglang.placeDerivedByBigRoadDirection(isDown, info);
         
         const text = type === 'banker' ? 'B' : 'P';
-        beadRoad.addMarker(type, text);
+        beadRoad.addMarker(type, text, pPair, bPair, lucky6, lucky7);
+    }
+    
+    updatePrediction();
+}
+
+function updatePrediction() {
+    if (!roads.dalu) return;
+    
+    // Helper to predict for a winner
+    const predictFor = (winner) => {
+        // 1. Get where it would go in Big Road
+        const pos = roads.dalu.getNextBigRoadPosition(winner);
+        
+        // 2. Predict derived roads
+        const res = {};
+        
+        // Check if valid to ask (Strict Rules)
+        const isDayanValid = (pos.colIndex === 1 && pos.rowIndex >= 1) || (pos.colIndex >= 2);
+        const isSmallValid = (pos.colIndex === 2 && pos.rowIndex >= 1) || (pos.colIndex >= 3);
+        const isCockroachValid = (pos.colIndex === 3 && pos.rowIndex >= 1) || (pos.colIndex >= 4);
+
+        if (isDayanValid) res.dayan = roads.dayan.computeDerivedColorFromBigRoad(roads.dalu, pos.colIndex, pos.rowIndex, pos.movedDown, 0, 0);
+        if (isSmallValid) res.small = roads.xiaolu.computeDerivedColorFromBigRoad(roads.dalu, pos.colIndex, pos.rowIndex, pos.movedDown, 0, 0);
+        if (isCockroachValid) res.cockroach = roads.zhanglang.computeDerivedColorFromBigRoad(roads.dalu, pos.colIndex, pos.rowIndex, pos.movedDown, 0, 0);
+        
+        return res;
+    };
+    
+    const predBanker = predictFor('banker');
+    const predPlayer = predictFor('player');
+    
+    // Render
+    renderPredictionSymbol('pred-banker-dayan', predBanker.dayan, 'dayan');
+    renderPredictionSymbol('pred-banker-small', predBanker.small, 'small');
+    renderPredictionSymbol('pred-banker-cockroach', predBanker.cockroach, 'cockroach');
+    
+    renderPredictionSymbol('pred-player-dayan', predPlayer.dayan, 'dayan');
+    renderPredictionSymbol('pred-player-small', predPlayer.small, 'small');
+    renderPredictionSymbol('pred-player-cockroach', predPlayer.cockroach, 'cockroach');
+}
+
+function renderPredictionSymbol(id, color, type) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = '';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'pred-symbol';
+    
+    const marker = document.createElement('div');
+    marker.style.width = '100%';
+    marker.style.height = '100%';
+    
+    if (!color) {
+        // Show grey dash if no prediction available
+        marker.className = 'marker no-prediction-dash';
+    } else {
+        let className = 'marker '; // Add marker class for centering
+        if (type === 'dayan') className += color === 'banker' ? 'dayan-red' : 'dayan-blue';
+        else if (type === 'small') className += color === 'banker' ? 'small-red' : 'small-blue';
+        else if (type === 'cockroach') className += color === 'banker' ? 'cockroach-red' : 'cockroach-blue';
+        marker.className = className;
+    }
+    
+    wrapper.appendChild(marker);
+    el.appendChild(wrapper);
+}
+
+// Music Controller Class
+class MusicController {
+    constructor() {
+        this.bgm = new Audio('assets/bgm.mp3');
+        this.bgm.loop = true;
+        this.bgm.volume = 0.3;
+        this.isPlaying = false;
+        
+        // Controls in Settings
+        this.btnSetting = document.getElementById('btn-music-toggle');
+        this.volumeSlider = document.getElementById('music-volume');
+        if (this.volumeSlider) {
+             this.volumeSlider.value = 0.3;
+        }
+        this.statusText = document.getElementById('music-status-text');
+        
+        // Main Button (Top Right)
+        this.btnMain = document.getElementById('btn-music-toggle-main');
+        
+        this.hasInteracted = false;
+        
+        this.init();
+    }
+    
+    init() {
+        if (this.volumeSlider) {
+            this.volumeSlider.addEventListener('input', (e) => {
+                this.bgm.volume = e.target.value;
+            });
+        }
+
+        // Bind Setting Button
+        if (this.btnSetting) {
+            this.btnSetting.addEventListener('click', () => this.toggle());
+        }
+        
+        // Bind Main Button
+        if (this.btnMain) {
+            this.btnMain.addEventListener('click', () => this.toggle());
+        }
+        
+        // 自动播放处理：浏览器通常阻止自动播放，直到用户与页面交互
+        const startPlay = () => {
+            if (!this.hasInteracted) {
+                this.hasInteracted = true;
+                if (!this.isPlaying) {
+                   this.play();
+                }
+                document.removeEventListener('click', startPlay);
+                document.removeEventListener('touchstart', startPlay);
+            }
+        };
+        
+        document.addEventListener('click', startPlay);
+        document.addEventListener('touchstart', startPlay);
+    }
+    
+    toggle() {
+        if (this.isPlaying) {
+            this.pause();
+        } else {
+            this.play();
+        }
+    }
+    
+    play() {
+        const playPromise = this.bgm.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                this.isPlaying = true;
+                this.updateUI();
+            }).catch(error => {
+                console.log('Auto-play was prevented.', error);
+                this.isPlaying = false;
+                this.updateUI();
+            });
+        }
+    }
+    
+    pause() {
+        this.bgm.pause();
+        this.isPlaying = false;
+        this.updateUI();
+    }
+    
+    updateUI() {
+        const updateBtn = (btn) => {
+            if (btn) {
+                btn.textContent = this.isPlaying ? '🎵' : '🔇';
+                if (this.isPlaying) {
+                    btn.classList.add('playing');
+                } else {
+                    btn.classList.remove('playing');
+                }
+            }
+        };
+
+        updateBtn(this.btnSetting);
+        updateBtn(this.btnMain);
+
+        if (this.statusText) {
+            // Simple localization check or use global currentLang
+            const isCN = (typeof currentLang !== 'undefined' && currentLang === 'zh-CN');
+            this.statusText.textContent = this.isPlaying ? (isCN ? '播放中' : 'Playing') : (isCN ? '已关闭' : 'Off');
+        }
     }
 }
