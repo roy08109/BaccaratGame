@@ -1010,6 +1010,114 @@ document.addEventListener('DOMContentLoaded', () => {
     */
 });
 
+// 语音播报类
+class VoiceAnnouncer {
+    constructor() {
+        this.synth = window.speechSynthesis;
+        this.voice = null;
+        this.enabled = true; // 默认开启
+        this.init();
+        this.initUI();
+    }
+
+    init() {
+        // 尝试加载语音
+        if (this.synth.onvoiceschanged !== undefined) {
+            this.synth.onvoiceschanged = () => this.loadVoices();
+        }
+        this.loadVoices();
+    }
+
+    initUI() {
+        this.btnToggle = document.getElementById('btn-voice-toggle');
+        this.statusText = document.getElementById('voice-status-text');
+
+        if (this.btnToggle) {
+            this.btnToggle.addEventListener('click', () => this.toggle());
+            this.updateUI();
+        }
+    }
+
+    toggle() {
+        this.enabled = !this.enabled;
+        if (!this.enabled) {
+            this.synth.cancel(); // 立即停止正在播放的语音
+        }
+        this.updateUI();
+    }
+
+    updateUI() {
+        if (this.btnToggle) {
+            this.btnToggle.textContent = this.enabled ? '🔊' : '🔇';
+            if (this.enabled) {
+                this.btnToggle.classList.add('playing'); // 复用 playing 样式
+            } else {
+                this.btnToggle.classList.remove('playing');
+            }
+        }
+        if (this.statusText) {
+            const isCN = (typeof currentLang !== 'undefined' && currentLang === 'zh-CN');
+            this.statusText.textContent = this.enabled ? (isCN ? '开启' : 'On') : (isCN ? '已关闭' : 'Off');
+        }
+    }
+
+    loadVoices() {
+        const voices = this.synth.getVoices();
+        // 优先选择中文语音
+        // 1. 尝试找 "Google 普通话" 或 "Google 粤语" (如果是繁体环境)
+        // 2. 找 zh-CN 或 zh-TW
+        
+        // 简单策略：优先 zh-CN，其次 zh-TW
+        this.voice = voices.find(v => v.lang === 'zh-CN') || 
+                     voices.find(v => v.lang === 'zh-TW') || 
+                     voices.find(v => v.lang.includes('zh'));
+    }
+
+    announceResult(winner, score, isLucky6, isLucky7) {
+        if (!this.synth || !this.enabled) return;
+
+        // 确保有语音，如果没有再试一次
+        if (!this.voice) this.loadVoices();
+
+        let text = '';
+        
+        if (winner === 'tie') {
+            text = `和局${score}点`;
+        } else if (winner === 'banker') {
+            if (isLucky6) {
+                text = '庄幸运6赢';
+            } else {
+                text = `庄家${score}点赢`;
+            }
+        } else if (winner === 'player') {
+            if (isLucky7) {
+                text = '闲幸运7赢';
+            } else {
+                text = `闲家${score}点赢`;
+            }
+        }
+
+        if (text) {
+            this.speak(text);
+        }
+    }
+
+    speak(text) {
+        // 取消当前的播报
+        this.synth.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        if (this.voice) {
+            utterance.voice = this.voice;
+        }
+        utterance.rate = 1.0; // 语速
+        utterance.pitch = 1.0; // 音调
+        utterance.volume = 1.0; // 音量
+
+        this.synth.speak(utterance);
+    }
+}
+
 // 游戏逻辑类
 class BaccaratGame {
     constructor(config) {
@@ -1057,12 +1165,17 @@ class BaccaratGame {
             lucky7: 0
         };
 
+        this.announcer = new VoiceAnnouncer();
+
         this.initUI();
         this.initDeck();
         this.bindEvents();
         this.updateBalanceUI();
         this.updateDealButtonState();
         this.updateClearButtonState();
+        
+        // Trigger Cut Animation on Init
+        setTimeout(() => this.performCut(), 500);
     }
     
     initUI() {
@@ -1681,7 +1794,21 @@ class BaccaratGame {
         
         const overlay = document.getElementById('result-overlay');
         if (overlay) {
-            overlay.textContent = resultText;
+            // 构建 HTML 内容，支持多行
+            let htmlContent = `<div>${resultText}</div>`;
+            
+            // 如果有赢钱，追加显示赢取金额 (本金 + 盈利)
+            if (winnings > 0) {
+                // winnings 已经包含了本金 + 盈利 (在前面的计算逻辑中：bet * odds 是利润，这里代码逻辑似乎需要确认)
+                // 检查前面的逻辑：
+                // winnings += this.bet.player * 2; -> 包含本金 (1赔1)
+                // winnings += this.bet.banker * (1 + odds); -> 包含本金
+                // winnings += this.bet.tie * 9; -> 包含本金 (1赔8，返还1，共9)
+                // 所以 winnings 变量本身就是 "本金 + 盈利"
+                htmlContent += `<div class="win-amount">赢取: ${Math.floor(winnings).toLocaleString()}</div>`;
+            }
+
+            overlay.innerHTML = htmlContent; // 使用 innerHTML 而不是 textContent
             overlay.classList.remove('hidden');
             
             // Add specific classes for styling
@@ -1749,6 +1876,10 @@ class BaccaratGame {
              lucky7Val = playerCardsCount;
         }
 
+        // 语音播报
+        const winScore = (winner === 'banker') ? bScore : pScore;
+        this.announcer.announceResult(winner, winScore, bankerWin6, playerWin7);
+
         handleInput(winner, pPair, bPair, lucky6Val, lucky7Val);
         
         // Check for Game Over (Reset)
@@ -1807,10 +1938,86 @@ class BaccaratGame {
         if(overlay) {
              overlay.textContent = '洗牌中...';
              overlay.classList.remove('hidden');
-             setTimeout(() => overlay.classList.add('hidden'), 1500);
+             setTimeout(() => {
+                 overlay.classList.add('hidden');
+                 this.performCut(); // Trigger Cut after shuffle
+             }, 1500);
         }
         
         updatePrediction();
+    }
+
+    async performCut() {
+        if (this.deck.length < 20) this.initDeck(); // Ensure enough cards
+
+        const overlay = document.getElementById('cut-overlay');
+        const indicatorContainer = document.getElementById('cut-indicator-card');
+        const burnGrid = document.getElementById('burn-cards-grid');
+        const infoText = document.getElementById('cut-info-text');
+        
+        if (!overlay || !indicatorContainer || !burnGrid) return;
+
+        // 1. Draw Indicator Card
+        const indicatorCard = this.deck.pop();
+        
+        // 2. Determine Burn Count
+        let burnCount = indicatorCard.value;
+        if (indicatorCard.rank === 'J' || indicatorCard.rank === 'Q' || indicatorCard.rank === 'K' || indicatorCard.rank === '10') {
+            burnCount = 10;
+        } else if (indicatorCard.rank === 'A') {
+            burnCount = 1;
+        }
+        
+        // Update Info Text
+        infoText.textContent = `${indicatorCard.rank}点 - 销牌${burnCount}张`;
+
+        // Render Indicator Card
+        this.renderCard(indicatorCard, indicatorContainer);
+        
+        // 3. Draw Burn Cards
+        const burnCards = [];
+        for (let i = 0; i < burnCount; i++) {
+            burnCards.push(this.deck.pop());
+        }
+
+        // Render Burn Cards (Backs)
+        burnGrid.innerHTML = '';
+        burnCards.forEach(() => {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'card'; // CSS handles back style for .burn-grid .card
+            burnGrid.appendChild(cardEl);
+        });
+
+        // Show Overlay
+        overlay.classList.remove('hidden');
+
+        // Wait for 3 seconds then hide
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        overlay.classList.add('hidden');
+    }
+
+    renderCard(card, container) {
+        // Clear container but keep class
+        container.innerHTML = '';
+        container.style.backgroundImage = ''; // Reset inline style
+        
+        // Calculate Sprite Position (Copied from drawCard)
+        const suitMap = { '♠': 3, '♥': 2, '♣': 0, '♦': 1 };
+        const rankMap = {
+            'A': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6,
+            '8': 7, '9': 8, '10': 9, 'J': 10, 'Q': 11, 'K': 12
+        };
+        
+        const suitIdx = suitMap[card.suit];
+        const rankIdx = rankMap[card.rank];
+        
+        const xPos = (rankIdx * 100 / 12).toFixed(4) + '%';
+        const yPos = (suitIdx * 100 / 4).toFixed(4) + '%';
+        
+        container.style.backgroundImage = "url('assets/cards.png'), url('assets/cards.svg')";
+        container.style.backgroundPosition = `${xPos} ${yPos}`;
+        container.style.backgroundSize = "1300% 500%";
     }
 }
 
