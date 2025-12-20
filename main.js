@@ -773,8 +773,20 @@ class RoadMap {
             // 寻找下一个可用的起始列
             // 通常是 startCol + 1，但如果之前的长龙向右延伸占用了位置，需要跳过
             let nextStart = this.colorData.startCol + 1;
+            
+            // 安全保护：添加最大迭代次数和扩容检查，防止无限循环
+            let loopSafety = 0;
             while (this.isOccupied(0, nextStart)) {
                 nextStart++;
+                loopSafety++;
+                // 如果搜索超过100列，或者超出当前列数，则认为需要扩容或停止
+                if (nextStart >= this.cols) {
+                     this.expandGrid(10);
+                }
+                if (loopSafety > 1000) {
+                    console.error("Infinite loop detected in placeDerivedByBigRoadDirection");
+                    break;
+                }
             }
             this.colorData.startCol = nextStart;
             
