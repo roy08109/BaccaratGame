@@ -586,11 +586,37 @@ body {
 }
 
 .balance-display-overlay {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 20px;
     font-weight: bold;
     color: #ffd700;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
     white-space: nowrap;
+}
+
+.btn-info-small {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.5);
+    background: rgba(0,0,0,0.3);
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.2s;
+    pointer-events: auto; /* Enable clicks */
+}
+
+.btn-info-small:hover {
+    background: rgba(255,255,255,0.2);
+    border-color: white;
 }
 
 .game-stats-display {

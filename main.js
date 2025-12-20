@@ -978,77 +978,81 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 格式化输入金额
     const buyinInput = document.getElementById('setting-buyin');
-    buyinInput.addEventListener('input', function(e) {
-        // 移除所有非数字字符
-        let value = this.value.replace(/\D/g, '');
-        if (value) {
-            // 添加千位分隔符
-            this.value = parseInt(value).toLocaleString('en-US');
-        } else {
-            this.value = '';
-        }
-    });
+    if (buyinInput) {
+        buyinInput.addEventListener('input', function(e) {
+            // 移除所有非数字字符
+            let value = this.value.replace(/\D/g, '');
+            if (value) {
+                // 添加千位分隔符
+                this.value = parseInt(value).toLocaleString('en-US');
+            } else {
+                this.value = '';
+            }
+        });
+    }
 
-    btnStart.addEventListener('click', () => {
-        // 获取设置
-        const buyinRaw = document.getElementById('setting-buyin').value.replace(/,/g, '');
-        const buyinAmount = parseInt(buyinRaw) || 0;
-        const limitStr = document.getElementById('setting-limit').value;
-        const [minLimit, maxLimit] = limitStr.split('-').map(Number);
-        
-        const commissionMode = document.querySelector('input[name="commission"]:checked').value;
-        const lucky6 = document.getElementById('setting-lucky6').checked;
-        const lucky7 = document.getElementById('setting-lucky7').checked;
-        const superLucky7 = document.getElementById('setting-super-lucky7').checked;
-        
-        if (game) {
-            // Update existing game
-            if (buyinAmount > 0) {
-                game.balance += buyinAmount;
-                game.totalBuyin = (game.totalBuyin || 0) + buyinAmount;
-                game.updateBalanceUI();
+    if (btnStart) {
+        btnStart.addEventListener('click', () => {
+            // 获取设置
+            const buyinRaw = document.getElementById('setting-buyin').value.replace(/,/g, '');
+            const buyinAmount = parseInt(buyinRaw) || 0;
+            const limitStr = document.getElementById('setting-limit').value;
+            const [minLimit, maxLimit] = limitStr.split('-').map(Number);
+            
+            const commissionMode = document.querySelector('input[name="commission"]:checked').value;
+            const lucky6 = document.getElementById('setting-lucky6').checked;
+            const lucky7 = document.getElementById('setting-lucky7').checked;
+            const superLucky7 = document.getElementById('setting-super-lucky7').checked;
+            
+            if (game) {
+                // Update existing game
+                if (buyinAmount > 0) {
+                    game.balance += buyinAmount;
+                    game.totalBuyin = (game.totalBuyin || 0) + buyinAmount;
+                    game.updateBalanceUI();
+                }
+                
+                // Update config
+                game.config.minLimit = minLimit;
+                game.config.maxLimit = maxLimit;
+                game.config.commissionMode = commissionMode;
+                game.config.sideBets.lucky6 = lucky6;
+                game.config.sideBets.lucky7 = lucky7;
+                game.config.sideBets.superLucky7 = superLucky7;
+                
+                // Re-apply settings to UI
+                game.initUI(); 
+            } else {
+                // New Game
+                const initialBalance = buyinAmount || 10000;
+                const config = {
+                    balance: initialBalance,
+                    minLimit,
+                    maxLimit,
+                    commissionMode,
+                    sideBets: {
+                        lucky6,
+                        lucky7,
+                        superLucky7
+                    }
+                };
+                game = new BaccaratGame(config);
             }
             
-            // Update config
-            game.config.minLimit = minLimit;
-            game.config.maxLimit = maxLimit;
-            game.config.commissionMode = commissionMode;
-            game.config.sideBets.lucky6 = lucky6;
-            game.config.sideBets.lucky7 = lucky7;
-            game.config.sideBets.superLucky7 = superLucky7;
-            
-            // Re-apply settings to UI
-            game.initUI(); 
-        } else {
-            // New Game
-            const initialBalance = buyinAmount || 10000;
-            const config = {
-                balance: initialBalance,
-                minLimit,
-                maxLimit,
-                commissionMode,
-                sideBets: {
-                    lucky6,
-                    lucky7,
-                    superLucky7
-                }
-            };
-            game = new BaccaratGame(config);
-        }
-        
-        // Update Table Limit Display
-        const limitDisplay = document.getElementById('table-limit-display');
-        if (limitDisplay) {
-            // Format numbers: 25 -> 25, 1500000 -> 150万
-            const formatLimit = (num) => {
-                if (num >= 10000) return (num / 10000) + '万';
-                return num;
-            };
-            limitDisplay.textContent = `台红: ${formatLimit(minLimit)}-${formatLimit(maxLimit)}`;
-        }
-
-        modal.style.display = 'none';
-    });
+            // Update Table Limit Display
+            const limitDisplay = document.getElementById('table-limit-display');
+            if (limitDisplay) {
+                // Format numbers: 25 -> 25, 1500000 -> 150万
+                const formatLimit = (num) => {
+                    if (num >= 10000) return (num / 10000) + '万';
+                    return num;
+                };
+                limitDisplay.textContent = `台红: ${formatLimit(minLimit)}-${formatLimit(maxLimit)}`;
+            }
+    
+            modal.style.display = 'none';
+        });
+    }
 
     // Settings Toggle Button
     const btnSettingsToggle = document.getElementById('btn-settings-toggle');
@@ -1063,6 +1067,50 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // 绑定余额信息按钮
+    const btnBalanceInfo = document.getElementById('btn-balance-info');
+    const balanceInfoModal = document.getElementById('balance-info-modal');
+    const btnCloseInfo = document.getElementById('btn-close-info');
+
+    if (btnBalanceInfo && balanceInfoModal) {
+        btnBalanceInfo.addEventListener('click', () => {
+            const totalBuyin = game ? game.totalBuyin : 0;
+            const currentBalance = game ? game.balance : 0;
+            const winLoss = currentBalance - totalBuyin;
+            
+            const totalBuyinEl = document.getElementById('info-total-buyin');
+            const winLossEl = document.getElementById('info-win-loss');
+            
+            if (totalBuyinEl) totalBuyinEl.textContent = totalBuyin.toLocaleString();
+            if (winLossEl) {
+                const sign = winLoss > 0 ? '+' : '';
+                winLossEl.textContent = sign + winLoss.toLocaleString();
+                // 根据正负值设置颜色：赢为绿色，输为红色，0 为黑色
+                if (winLoss > 0) {
+                    winLossEl.style.color = '#34c759'; // Green
+                } else if (winLoss < 0) {
+                    winLossEl.style.color = '#ff4444'; // Red
+                } else {
+                    winLossEl.style.color = 'black';
+                }
+            }
+            
+            balanceInfoModal.classList.remove('hidden');
+            balanceInfoModal.style.display = 'flex';
+        });
+
+        const closeInfo = () => {
+            balanceInfoModal.classList.add('hidden');
+            balanceInfoModal.style.display = 'none';
+        };
+
+        if (btnCloseInfo) btnCloseInfo.addEventListener('click', closeInfo);
+        
+        balanceInfoModal.addEventListener('click', (e) => {
+            if (e.target === balanceInfoModal) closeInfo();
+        });
+    }
+
     // 绑定重置按钮
     /*
     document.getElementById('btn-reset').addEventListener('click', () => {
