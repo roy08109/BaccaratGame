@@ -5,10 +5,22 @@ const path = require('path');
 const port = 3000;
 
 const server = http.createServer((req, res) => {
-    let filePath = '.' + req.url;
+    console.log('Request URL:', req.url); // Debug log
+    
+    // Remove query string if present
+    const urlPath = req.url.split('?')[0];
+    
+    let filePath = '.' + urlPath;
     if (filePath === './') {
         filePath = './index.html';
     }
+
+    // Fix for paths starting with /
+    if (filePath.startsWith('.//')) {
+        filePath = filePath.replace('.//', './');
+    }
+    
+    console.log('Resolved File Path:', filePath); // Debug log
 
     const extname = String(path.extname(filePath)).toLowerCase();
     const mimeTypes = {
@@ -27,19 +39,21 @@ const server = http.createServer((req, res) => {
     fs.readFile(filePath, (error, content) => {
         if (error) {
             if(error.code == 'ENOENT') {
-                fs.readFile('./404.html', (error, content) => {
-                    res.writeHead(200, { 'Content-Type': contentType });
-                    res.end(content, 'utf-8');
-                });
+                res.writeHead(404);
+                res.end('File not found');
             }
             else {
                 res.writeHead(500);
                 res.end('Sorry, check with the site admin for error: '+error.code+' ..\n');
-                res.end();
             }
         }
         else {
-            res.writeHead(200, { 'Content-Type': contentType });
+            // Add charset=utf-8 for text types
+            let finalContentType = contentType;
+            if (contentType.startsWith('text/')) {
+                finalContentType += '; charset=utf-8';
+            }
+            res.writeHead(200, { 'Content-Type': finalContentType });
             res.end(content, 'utf-8');
         }
     });

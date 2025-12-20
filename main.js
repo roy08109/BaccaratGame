@@ -547,12 +547,31 @@ class RoadMap {
         return { movedDown, movedRight, colIndex: targetCol, rowIndex: targetRow };
     }
     
-    renderMarker(r, c, winner, pPair, bPair, lucky6, lucky7) {
+    renderMarker(r, c, winner, pPair, bPair, lucky6, lucky7, text = null) {
         // 查找单元格
         const index = r * this.cols + c;
         const cell = this.container.children[index];
         if (!cell) return;
         
+        // 如果有文本（数字2），直接绘制数字
+        if (text) {
+            const numEl = document.createElement('div');
+            numEl.className = 'marker-text';
+            numEl.textContent = text;
+            
+            // 根据赢家颜色设置字体颜色
+            if (this.type === 'dayan') {
+                numEl.style.color = (winner === 'banker') ? '#d93025' : '#1a73e8'; // red : blue
+            } else if (this.type === 'small') {
+                numEl.style.color = (winner === 'banker') ? '#d93025' : '#1a73e8';
+            } else if (this.type === 'cockroach') {
+                numEl.style.color = (winner === 'banker') ? '#d93025' : '#1a73e8';
+            }
+            
+            cell.appendChild(numEl);
+            return; // 不画圈，直接返回
+        }
+
         const marker = document.createElement('div');
         marker.className = 'marker';
         
@@ -751,15 +770,15 @@ class RoadMap {
         if (lastColor === null || colorIfNewCol !== lastColor) {
             // 切换颜色 -> 新列起始
             this.colorData.lastStartCol = this.colorData.startCol;
-            this.colorData.startCol = this.colorData.lastStartCol + 1;
+            // 寻找下一个可用的起始列
+            // 通常是 startCol + 1，但如果之前的长龙向右延伸占用了位置，需要跳过
+            let nextStart = this.colorData.startCol + 1;
+            while (this.isOccupied(0, nextStart)) {
+                nextStart++;
+            }
+            this.colorData.startCol = nextStart;
             
-            // 修正：如果是第一次绘制（lastColor was null），startCol 应该是 0，而不是 lastStartCol(-1) + 1 = 0.
-            // Wait, logic above: if lastColor is null, startCol=0, lastStartCol=-1.
-            // Then here: lastStartCol(which is -1) + 1 = 0. Correct.
-            // BUT, if startCol was already set to something else by global logic?
-            // Yes, we forced it to 0 above.
-            
-            // 特殊修正：如果是第一次绘制，确保 startCol 为 0 (覆盖上面的 +1 逻辑，虽然结果也是 0)
+            // 特殊修正：如果是第一次绘制，确保 startCol 为 0
             if (lastColor === null) {
                 this.colorData.startCol = 0;
             }
@@ -768,15 +787,73 @@ class RoadMap {
             row = 0;
             this.colorData.currCol = targetCol;
             this.colorData.currRow = 0;
-            this.colorData.clickCnt = 1;
+            this.colorData.clickCnt = 1; // 计数器重置为1
             this.colorData.turned = false;
+            this.colorData.isNumberMode = false;
             color = colorIfNewCol;
         } else {
             // 同色 -> 优先向下，受阻则向右（拐弯）
             let nextRow = this.colorData.currRow + 1;
             let nextCol = this.colorData.currCol;
+            let currentCount = (this.colorData.clickCnt || 0) + 1;
             
-            if (this.colorData.turned || this.isOccupied(nextRow, nextCol)) {
+            // 默认颜色与上一手相同（同色）
+            color = lastColor;
+
+            // 1. 如果已经处于数字模式，直接原地更新数字
+            if (this.colorData.isNumberMode) {
+                // 原地更新，不移动
+                this.colorData.clickCnt = currentCount;
+                
+                // 重新绘制当前格子（更新数字）
+                const r = this.colorData.currRow;
+                const c = this.colorData.currCol;
+                
+                const index = r * this.cols + c;
+                const cell = this.container.children[index];
+                if (cell) {
+                    cell.innerHTML = ''; // 清除旧数字
+                    // 绘制新数字 (currentCount)
+                    this.renderMarker(r, c, color, null, null, null, null, String(currentCount));
+                }
+                return; // 完成，退出
+            }
+
+            // 2. 检查是否触发死路（双重受阻） -> 进入数字模式
+            // 检查向下是否受阻
+            const downBlocked = this.isOccupied(nextRow, nextCol);
+            
+            // 检查向右是否受阻 (注意：向右是在当前行 currRow，列 currCol + 1)
+            const rightBlocked = this.isOccupied(this.colorData.currRow, this.colorData.currCol + 1);
+            
+            // 触发死路/数字逻辑：
+            // 情况A: 双重受阻 (向下且向右都堵死) -> 任何时候都触发
+            // 情况B: 第二手向下受阻 (Row 0 -> Row 1 受阻) -> 强制触发数字模式，禁止在第一行横向拐弯 (防止第一行出现左右同色)
+            
+            const isDoubleBlocked = downBlocked && rightBlocked;
+            const isSecondBlocked = currentCount === 2 && downBlocked;
+
+            if (isDoubleBlocked || isSecondBlocked) {
+                // 触发死路逻辑 -> 开启数字模式
+                this.colorData.isNumberMode = true;
+                this.colorData.clickCnt = currentCount;
+
+                // 回溯修改当前格子（即上一个圈的位置）
+                const r = this.colorData.currRow;
+                const c = this.colorData.currCol;
+                
+                const index = r * this.cols + c;
+                const cell = this.container.children[index];
+                if (cell) {
+                    cell.innerHTML = ''; // 清除原来的圈
+                    // 绘制数字 (currentCount，通常为2)
+                    this.renderMarker(r, c, color, null, null, null, null, String(currentCount));
+                }
+                // 位置保持不变
+                return;
+            }
+
+            if (this.colorData.turned || downBlocked) {
                 this.colorData.turned = true;
                 // 拐弯：行不变，列加1
                 targetCol = this.colorData.currCol + 1;
@@ -789,30 +866,16 @@ class RoadMap {
             
             if (targetCol >= this.cols) return; // 超出边界
 
-            color = this.computeDerivedColorFromBigRoad(
-                roads.dalu,
-                bigRoadInfo.colIndex,
-                bigRoadInfo.rowIndex,
-                isDown,
-                targetCol,
-                row
-            );
             this.colorData.currCol = targetCol;
             this.colorData.currRow = row;
-            this.colorData.clickCnt = (this.colorData.clickCnt || 0) + 1;
+            this.colorData.clickCnt = currentCount;
         }
 
         // 放置
         this.grid[row][targetCol] = color;
         this.renderMarker(row, targetCol, color);
+        // 移除旧的数字显示逻辑 (renderNumber) 以免冲突
 
-        // 数字显示：同色横向第一次显示
-        if (this.colorData.lastColor === color && this.colorData.turned) {
-            this.renderNumber(targetCol, (this.colorData.numShowCount || 0) + 1);
-        } else {
-            // 新颜色或纵向，不显示数字计数（重置计数）
-            this.colorData.numShowCount = 0;
-        }
 
         // 更新状态
         this.colorData.lastColor = color;
@@ -2065,29 +2128,105 @@ function updatePrediction() {
         // 2. Predict derived roads
         const res = {};
         
-        // Check if valid to ask (Strict Rules)
-        const isDayanValid = (pos.colIndex === 1 && pos.rowIndex >= 1) || (pos.colIndex >= 2);
-        const isSmallValid = (pos.colIndex === 2 && pos.rowIndex >= 1) || (pos.colIndex >= 3);
-        const isCockroachValid = (pos.colIndex === 3 && pos.rowIndex >= 1) || (pos.colIndex >= 4);
+        // Helper function to calculate color directly (Logic copy from computeDerivedColorFromBigRoad)
+        // gap: 1 for Dayan, 2 for Small, 3 for Cockroach
+        const calculateColor = (gap) => {
+            const bigRoad = roads.dalu;
+            const col = pos.colIndex;
+            const row = pos.rowIndex;
+            const isDown = pos.movedDown;
+            
+            // Check validity
+            // Dayan: needs col >= 1 (if row>0) or col >= 2 (if row=0)
+            // But standard rule:
+            // Dayan starts at col 1 row 1 OR col 2 row 0.
+            // Small starts at col 2 row 1 OR col 3 row 0.
+            // Cockroach starts at col 3 row 1 OR col 4 row 0.
+            
+            // Simplified check: can we look back 'gap' columns?
+            // If row=0 (new column), we compare len(col-1) and len(col-1-gap)
+            // If row>0 (continuation), we compare grid[col-gap][row] and grid[col-gap][row-1]? No.
+            // Let's use standard logic:
+            
+            let color = null; // 'banker'(Red) or 'player'(Blue)
+            
+            if (row === 0) {
+                // Case 1: New Column (Change of luck)
+                // Compare length of previous column (col-1) with length of column (col-1-gap)
+                // Validity check: col >= gap + 1
+                if (col < gap + 1) return null;
+                
+                let lenPrev = 0;
+                let lenPrevGap = 0;
+                
+                // Get length of col-1
+                for (let r = 0; r < bigRoad.rows; r++) {
+                    if (bigRoad.isOccupied(r, col - 1)) lenPrev++;
+                    else break;
+                }
+                
+                // Get length of col-1-gap
+                for (let r = 0; r < bigRoad.rows; r++) {
+                    if (bigRoad.isOccupied(r, col - 1 - gap)) lenPrevGap++;
+                    else break;
+                }
+                
+                // Equal length -> Red, Unequal -> Blue
+                color = (lenPrev === lenPrevGap) ? 'banker' : 'player';
+                
+            } else {
+                // Case 2: Continuation (Same luck)
+                // Compare cell at (col-gap, row)
+                // Validity check: col >= gap
+                if (col < gap) return null;
+                
+                // Standard: Check if (col-gap, row) is occupied
+                // If occupied -> Red
+                // If empty -> Check if (col-gap, row-1) is occupied.
+                //    If (col-gap, row-1) occupied -> Blue (Empty but prev occupied = "Gap")
+                //    If (col-gap, row-1) empty -> Red (Both empty = "Stable") -- Wait, standard rule?
+                
+                // Let's use the exact logic from computeDerivedColorFromBigRoad:
+                // "Look at col - gap.
+                // If matrix[row][col-gap] is occupied -> Red
+                // Else (empty):
+                //    If matrix[row-1][col-gap] is occupied -> Blue (One empty)
+                //    Else -> Red (Both empty)"
+                
+                const isTargetOccupied = bigRoad.isOccupied(row, col - gap);
+                
+                if (isTargetOccupied) {
+                    color = 'banker'; // Red
+                } else {
+                    const isPrevRowOccupied = bigRoad.isOccupied(row - 1, col - gap);
+                    if (isPrevRowOccupied) {
+                        color = 'player'; // Blue
+                    } else {
+                        color = 'banker'; // Red
+                    }
+                }
+            }
+            return color;
+        };
 
-        if (isDayanValid) res.dayan = roads.dayan.computeDerivedColorFromBigRoad(roads.dalu, pos.colIndex, pos.rowIndex, pos.movedDown, 0, 0);
-        if (isSmallValid) res.small = roads.xiaolu.computeDerivedColorFromBigRoad(roads.dalu, pos.colIndex, pos.rowIndex, pos.movedDown, 0, 0);
-        if (isCockroachValid) res.cockroach = roads.zhanglang.computeDerivedColorFromBigRoad(roads.dalu, pos.colIndex, pos.rowIndex, pos.movedDown, 0, 0);
+        res.dayan = calculateColor(1);
+        res.small = calculateColor(2);
+        res.cockroach = calculateColor(3);
         
         return res;
     };
     
     const predBanker = predictFor('banker');
-    const predPlayer = predictFor('player');
+    const predictPlayer = predictFor('player'); // Rename to avoid confusion
     
     // Render
     renderPredictionSymbol('pred-banker-dayan', predBanker.dayan, 'dayan');
     renderPredictionSymbol('pred-banker-small', predBanker.small, 'small');
     renderPredictionSymbol('pred-banker-cockroach', predBanker.cockroach, 'cockroach');
     
-    renderPredictionSymbol('pred-player-dayan', predPlayer.dayan, 'dayan');
-    renderPredictionSymbol('pred-player-small', predPlayer.small, 'small');
-    renderPredictionSymbol('pred-player-cockroach', predPlayer.cockroach, 'cockroach');
+    renderPredictionSymbol('pred-player-dayan', predictPlayer.dayan, 'dayan');
+    renderPredictionSymbol('pred-player-small', predictPlayer.small, 'small');
+    renderPredictionSymbol('pred-player-cockroach', predictPlayer.cockroach, 'cockroach');
 }
 
 function renderPredictionSymbol(id, color, type) {
@@ -2120,6 +2259,11 @@ function renderPredictionSymbol(id, color, type) {
 // Music Controller Class
 class MusicController {
     constructor() {
+        // 如果是路单测试页，完全禁用音乐控制器
+        if (window.location.pathname.includes('roadmap-test.html')) {
+            return;
+        }
+
         this.bgm = new Audio('assets/bgm.mp3');
         this.bgm.loop = true;
         this.bgm.volume = 0.3;

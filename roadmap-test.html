@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>路单测试 (Roadmap Test)</title>
+    <link rel="stylesheet" href="main.css">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .test-controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        .control-group {
+            display: flex;
+            gap: 5px;
+            padding-right: 15px;
+            border-right: 1px solid #ddd;
+        }
+        .control-group:last-child {
+            border-right: none;
+        }
+        .btn-test {
+            padding: 8px 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            background: #fff;
+            transition: all 0.2s;
+        }
+        .btn-test:hover {
+            background: #eee;
+            transform: translateY(-1px);
+        }
+        .btn-banker { background: #ffadad; border-color: #ff4444; color: #800000; }
+        .btn-player { background: #8ecae6; border-color: #006699; color: #003366; }
+        .btn-tie { background: #90ee90; border-color: #34c759; color: #006400; }
+        .btn-clear { background: #666; color: white; border-color: #333; }
+        
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* 强制覆盖 main.css 中的某些样式以适应测试页 */
+        .container {
+            max-width: 100%; /* 全宽显示 */
+        }
+        .roadmap-area {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="test-controls">
+        <div class="control-group">
+            <label class="checkbox-label"><input type="checkbox" id="check-banker-pair"> 庄对</label>
+            <label class="checkbox-label"><input type="checkbox" id="check-player-pair"> 闲对</label>
+            <label class="checkbox-label"><input type="checkbox" id="check-lucky6"> 幸运6</label>
+        </div>
+        <div class="control-group">
+            <button class="btn-test btn-banker" onclick="addResult('banker')">庄赢 (B)</button>
+            <button class="btn-test btn-player" onclick="addResult('player')">闲赢 (P)</button>
+            <button class="btn-test btn-tie" onclick="addResult('tie')">和 (T)</button>
+        </div>
+        <div class="control-group">
+            <button class="btn-test btn-clear" onclick="clearRoads()">清除 (Clear)</button>
+        </div>
+    </div>
+
+    <!-- 复制 index.html 的路单结构 -->
+    <div class="roadmap-area">
+        <!-- 大路 -->
+        <div class="grid-dalu" id="dalu"></div>
+
+        <!-- 下三路 + 珠仔路 -->
+        <div class="bottom-table-container">
+            <div class="small-tables-group">
+                <div class="grid-dayan" id="dayan"></div>
+                <div class="grid-small" id="xiaolu"></div>
+                <div class="grid-small" id="zhanglang"></div>
+            </div>
+            <div class="zhuzailu-table-wrap">
+                <div class="grid-zhuzailu" id="zhuzailu"></div>
+                
+                <!-- Prediction Board -->
+                <div class="prediction-board" id="prediction-board">
+                    <div class="pred-row">
+                        <div class="pred-label"><span class="pred-indicator red"></span><span>庄</span></div>
+                        <div class="pred-cell" id="pred-banker-dayan"></div>
+                        <div class="pred-cell" id="pred-banker-small"></div>
+                        <div class="pred-cell" id="pred-banker-cockroach"></div>
+                    </div>
+                    <div class="pred-row">
+                        <div class="pred-label"><span class="pred-indicator blue"></span><span>闲</span></div>
+                        <div class="pred-cell" id="pred-player-dayan"></div>
+                        <div class="pred-cell" id="pred-player-small"></div>
+                        <div class="pred-cell" id="pred-player-cockroach"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入 main.js -->
+    <script src="main.js"></script>
+    
+    <!-- 测试逻辑脚本 -->
+    <script>
+        // 覆盖 main.js 中的 DOMContentLoaded 事件，避免初始化游戏逻辑，只初始化路单
+        // 由于 main.js 中的监听器已经绑定，我们可以在这里重新初始化或直接使用全局变量
+        
+        // 确保 main.js 加载完毕
+        window.addEventListener('load', () => {
+            console.log('Roadmap Test Loaded');
+            
+            // 如果 main.js 已经自动初始化了 roads (在 DOMContentLoaded)，我们就可以直接用了
+            // 但是 main.js 可能会报错，因为找不到 game-area 等元素
+            // 为了安全起见，我们在 main.js 中应该有判空逻辑，或者我们在测试页补充缺失的 hidden div
+            
+            // 重新初始化一遍路单，确保引用正确
+            if (typeof RoadMap !== 'undefined') {
+                roads.dalu = new RoadMap('dalu', CONFIG.dalu);
+                roads.dayan = new RoadMap('dayan', CONFIG.dayan);
+                roads.xiaolu = new RoadMap('xiaolu', CONFIG.xiaolu);
+                roads.zhanglang = new RoadMap('zhanglang', CONFIG.zhanglang);
+                beadRoad = new BeadRoad('zhuzailu', CONFIG.zhuzailu);
+                
+                // 清除可能因 main.js 自动运行而产生的副作用
+                clearRoads();
+            }
+        });
+
+        function addResult(winner) {
+            const bPair = document.getElementById('check-banker-pair').checked;
+            const pPair = document.getElementById('check-player-pair').checked;
+            const isLucky6 = document.getElementById('check-lucky6').checked;
+            
+            // Lucky 6 逻辑：如果是庄赢且勾选了幸运6，传入 2 (代表2张牌，或者仅仅是触发标记)
+            // 根据 main.js 逻辑：lucky6Val = bankerCardsCount (2 or 3)
+            let lucky6Val = false;
+            if (winner === 'banker' && isLucky6) {
+                lucky6Val = 2; // 默认模拟 2 张牌的幸6
+            }
+            
+            // 调用 main.js 中的全局函数 handleInput
+            // handleInput(type, pPair, bPair, lucky6, lucky7)
+            handleInput(winner, pPair, bPair, lucky6Val, false);
+            
+            // 重置复选框 (可选，方便连续录入)
+            // document.getElementById('check-banker-pair').checked = false;
+            // document.getElementById('check-player-pair').checked = false;
+            // document.getElementById('check-lucky6').checked = false;
+        }
+
+        function clearRoads() {
+            if (roads.dalu) roads.dalu.clear();
+            if (roads.dayan) roads.dayan.clear();
+            if (roads.xiaolu) roads.xiaolu.clear();
+            if (roads.zhanglang) roads.zhanglang.clear();
+            if (beadRoad) beadRoad.clear();
+            
+            // 更新预测
+            updatePrediction();
+        }
+    </script>
+    
+    <!-- 补充缺失的 DOM 元素以防 main.js 报错 (虽然 main.js 大多有判空，但有些可能漏了) -->
+    <div id="result-overlay" class="hidden"></div>
+    <div id="btn-deal" class="hidden"></div>
+    <div id="btn-clear" class="hidden"></div>
+    <!-- 补充音效相关的按钮 -->
+    <button id="btn-music-toggle" class="hidden"></button>
+    <button id="btn-music-toggle-main" class="hidden"></button>
+    <button id="btn-voice-toggle" class="hidden"></button>
+    <span id="voice-status-text" class="hidden"></span>
+    <span id="music-status-text" class="hidden"></span>
+
+</body>
+</html>
