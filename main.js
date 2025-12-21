@@ -1318,9 +1318,14 @@ class PeekController {
             cardEl.className = 'peek-card';
             
             // Check if it's a 3rd card (single card scenario)
+            // User Change: "補牌也是打直看牌" -> Even 3rd card should be vertical in peek mode.
+            // Original: if (cardsData.length === 1) cardEl.classList.add('horizontal');
+            // New: Always vertical. Remove this check.
+            /* 
             if (cardsData.length === 1) {
                 cardEl.classList.add('horizontal');
             }
+            */
             
             // Face
             const face = document.createElement('div');
@@ -1499,6 +1504,8 @@ class BaccaratGame {
             lucky7: 0
         };
 
+        this.squeezeMode = true; // Default Squeeze ON
+
         this.announcer = new VoiceAnnouncer();
         this.peekCtrl = new PeekController();
 
@@ -1557,8 +1564,29 @@ class BaccaratGame {
         if (btnSuperLucky7) {
             btnSuperLucky7.style.display = this.config.sideBets.superLucky7 ? 'flex' : 'none';
         }
+
+        // Bind Peek Toggle
+        const btnPeekToggle = document.getElementById('btn-peek-toggle');
+        if (btnPeekToggle) {
+            this.updatePeekButtonUI(btnPeekToggle);
+            btnPeekToggle.onclick = () => {
+                this.squeezeMode = !this.squeezeMode;
+                this.updatePeekButtonUI(btnPeekToggle);
+            };
+        }
         
         this.updateStatsUI();
+    }
+
+    updatePeekButtonUI(btn) {
+        if (!btn) return;
+        if (this.squeezeMode) {
+            btn.classList.remove('disabled');
+            btn.textContent = '👁️'; // Open eye
+        } else {
+            btn.classList.add('disabled');
+            btn.textContent = '🙈'; // Monkey covering eyes or closed eye
+        }
     }
     
     initDeck() {
@@ -1889,7 +1917,9 @@ class BaccaratGame {
         // Logic Update: If user is peeking (betting on one side), 
         // ALL initial cards should be dealt hidden to create suspense.
         // The opponent's cards will only be revealed AFTER the user peeks.
-        const shouldHideInitial = peekPlayer || peekBanker;
+        // Also respect global squeezeMode toggle.
+        const shouldPeek = this.squeezeMode && (peekPlayer || peekBanker);
+        const shouldHideInitial = shouldPeek;
         
         // 清理桌面
         this.clearTable();
@@ -1909,25 +1939,28 @@ class BaccaratGame {
         await this.drawCard('banker', bCards, shouldHideInitial);
         
         // Peek Phase 1: Initial Hands
-        if (peekPlayer) {
-            // User bets Player: Peek Player first
-            await this.peekCtrl.peek(pCards, 'player');
-            // Reveal Player (User's hand)
-            await this.revealHand('player', pCards);
-            // Then Reveal Banker (Opponent)
-            await this.revealHand('banker', bCards);
-        } else if (peekBanker) {
-            // User bets Banker: Peek Banker first
-            await this.peekCtrl.peek(bCards, 'banker');
-            // Reveal Banker (User's hand)
-            await this.revealHand('banker', bCards);
-            // Then Reveal Player (Opponent)
-            await this.revealHand('player', pCards);
+        if (shouldPeek) {
+            if (peekPlayer) {
+                // User bets Player: Peek Player first
+                await this.peekCtrl.peek(pCards, 'player');
+                // Reveal Player (User's hand)
+                await this.revealHand('player', pCards);
+                // Then Reveal Banker (Opponent)
+                await this.revealHand('banker', bCards);
+            } else if (peekBanker) {
+                // User bets Banker: Peek Banker first
+                await this.peekCtrl.peek(bCards, 'banker');
+                // Reveal Banker (User's hand)
+                await this.revealHand('banker', bCards);
+                // Then Reveal Player (Opponent)
+                await this.revealHand('player', pCards);
+            }
         } else {
-            // No peeking involved (e.g. Tie bet only or just watching)
-            // Reveal all immediately if they were hidden (though we only hid if peekPlayer || peekBanker)
-            // But if logic changes later to always hide, we need to reveal here.
-            // Currently shouldHideInitial is false here, so cards are already visible.
+            // No peeking involved (e.g. Tie bet only or just watching OR Squeeze Mode OFF)
+            // Reveal all immediately if they were hidden (though we only hid if shouldHideInitial is true)
+            // But if shouldHideInitial is false, cards are visible.
+            // Just in case we expand logic later, ensure reveal.
+            // (Currently redundant but safe)
         }
         
         let pScore = this.calcScore(pCards);
@@ -1964,7 +1997,7 @@ class BaccaratGame {
                 
                 // Determine if we should hide 3rd cards initially
                 // If anyone is betting/peeking, we hide to maintain suspense order
-                const hide3rd = peekPlayer || peekBanker;
+                const hide3rd = shouldPeek;
                 
                 await this.drawCard('player', pCards, hide3rd);
                 // Now pCards has the 3rd card
@@ -1981,13 +2014,13 @@ class BaccaratGame {
             
             // 3. Banker Physical Draw (if needed)
             if (bDraw) {
-                const hide3rd = peekPlayer || peekBanker;
+                const hide3rd = shouldPeek;
                 await this.drawCard('banker', bCards, hide3rd);
             }
             
             // 4. Peek and Reveal Sequence
             // Scenario A: User bets Player (Peeks Player)
-            if (pDraw && peekPlayer) {
+            if (shouldPeek && pDraw && peekPlayer) {
                 // Peek Player 3rd
                 await this.peekCtrl.peek([pCards[2]], 'player');
                 // Reveal Player 3rd
@@ -1996,7 +2029,7 @@ class BaccaratGame {
                 if (bDraw) await this.revealHand('banker', bCards);
             } 
             // Scenario B: User bets Banker (Peeks Banker)
-            else if (bDraw && peekBanker) {
+            else if (shouldPeek && bDraw && peekBanker) {
                 // Peek Banker 3rd
                 await this.peekCtrl.peek([bCards[2]], 'banker');
                 // Reveal Banker 3rd
@@ -2006,9 +2039,18 @@ class BaccaratGame {
             }
             // Scenario C: No Peeking (or User didn't bet on the drawing side that triggers peek)
             else {
-                // Just reveal any hidden cards
-                if (pDraw) await this.revealHand('player', pCards);
-                if (bDraw) await this.revealHand('banker', bCards);
+                 // Just reveal any hidden cards
+                 // We need to check if cards were hidden. `shouldPeek` determined `hide3rd`.
+                 // If shouldPeek was true, but we fell through to here (e.g. betting Player but Banker drew, or betting Banker but Player drew, wait...
+                 // If I bet Player (peekPlayer=true), and pDraw=false, bDraw=true.
+                 // shouldPeek=true. hide3rd=true.
+                 // Scenario A is false (pDraw false). Scenario B is false (peekBanker false).
+                 // So we land here. Banker card is hidden. We should reveal it.
+                 // So if shouldPeek is true, we must reveal.
+                 if (shouldPeek) {
+                     if (pDraw) await this.revealHand('player', pCards);
+                     if (bDraw) await this.revealHand('banker', bCards);
+                 }
             }
             
             // Recalculate Scores
@@ -2051,6 +2093,15 @@ class BaccaratGame {
         
         // 第3张牌（补牌）添加特殊样式
         const isThird = handArr.length === 3;
+        // User Change: "補牌也是打直看牌" -> This likely refers to the PEEKING (squeeze) view.
+        // However, on the table (deal area), Baccarat convention is usually horizontal for the 3rd card.
+        // The user said "補牌也是打直看牌", literally "Supplement card is also look straight".
+        // This usually implies the SQUEEZE/PEEK interaction should be vertical (straight).
+        // I have already updated PeekController (renderCards) to remove .horizontal class.
+        // But should the table layout also be vertical?
+        // Standard Baccarat: Table = Horizontal 3rd card. Squeeze = Depends on player preference, but user asked for straight.
+        // I will keep the TABLE layout horizontal (standard) but the PEEK layout vertical (as requested).
+        // So I will NOT change this line for the main table.
         cardEl.className = `card ${isThird ? 'horizontal' : ''}`;
         
         // Calculate Sprite Position

@@ -108,6 +108,35 @@ body {
     background: rgba(0, 0, 0, 0.5);
 }
 
+.btn-peek-toggle {
+    position: absolute;
+    top: 102px; /* 56px + 36px + 10px gap */
+    right: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    font-size: 16px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    z-index: 50;
+    transition: background 0.2s;
+}
+
+.btn-peek-toggle:hover {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.btn-peek-toggle.disabled {
+    opacity: 0.5;
+    background: rgba(255, 0, 0, 0.2);
+    /* Strike-through effect or similar? Just opacity/color change for now */
+}
+
 .game-area.theme-super6 {
     background-color: #6236d1; /* Super 6 Purple */
 }
