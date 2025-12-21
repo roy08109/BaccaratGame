@@ -11,6 +11,8 @@ const TRANSLATIONS = {
     'zh-CN': {
         settings_title: '游戏设置',
         table_limit: '台红限制',
+        min_bet: '最低投注',
+        max_bet: '最大投注',
         commission_mode: '抽水模式',
         comm_classic: '95桌 (庄赢0.95)',
         comm_super6: '6点一半 (免佣)',
@@ -55,6 +57,8 @@ const TRANSLATIONS = {
     'zh-TW': {
         settings_title: '遊戲設置',
         table_limit: '台紅限制',
+        min_bet: '最低投注',
+        max_bet: '最大投注',
         commission_mode: '抽水模式',
         comm_classic: '95桌 (庄贏0.95)',
         comm_super6: '6點一半 (免傭)',
@@ -1008,8 +1012,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // 获取设置
             const buyinRaw = document.getElementById('setting-buyin').value.replace(/,/g, '');
             const buyinAmount = parseInt(buyinRaw) || 0;
-            const limitStr = document.getElementById('setting-limit').value;
-            const [minLimit, maxLimit] = limitStr.split('-').map(Number);
+            
+            const minLimit = parseInt(document.getElementById('setting-min-limit').value);
+            const maxLimit = parseInt(document.getElementById('setting-max-limit').value);
             
             const commissionMode = document.querySelector('input[name="commission"]:checked').value;
             const lucky6 = document.getElementById('setting-lucky6').checked;
@@ -1131,6 +1136,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     */
+
+    // 绑定测试按钮
+    const btnTest = document.getElementById('btn-test-run');
+    if (btnTest) {
+        btnTest.addEventListener('click', () => {
+            // Confirm before running test (optional)
+            // if (confirm('Start auto-play test?')) {
+                autoPlay(57);
+            // }
+        });
+    }
 });
 
 // 语音播报类
@@ -1221,13 +1237,25 @@ class VoiceAnnouncer {
         }
 
         if (text) {
-            this.speak(text);
+            this.speak(text, true); // Interrupt previous
         }
     }
 
-    speak(text) {
+    announceLastRound() {
+        if (!this.synth || !this.enabled) return;
+        this.speak('最后一局', false); // Queue it, don't interrupt result
+    }
+
+    announceShuffling() {
+        if (!this.synth || !this.enabled) return;
+        this.speak('洗牌中，请稍等', true); // Interrupt previous
+    }
+
+    speak(text, interrupt = true) {
         // 取消当前的播报
-        this.synth.cancel();
+        if (interrupt) {
+            this.synth.cancel();
+        }
 
         const utterance = new SpeechSynthesisUtterance(text);
         if (this.voice) {
@@ -1235,7 +1263,7 @@ class VoiceAnnouncer {
         }
         utterance.rate = 1.0; // 语速
         utterance.pitch = 1.0; // 音调
-        utterance.volume = 1.0; // 音量
+        utterance.volume = 0.4; // 音量 (0.0 to 1.0)
 
         this.synth.speak(utterance);
     }
@@ -1649,10 +1677,18 @@ class BaccaratGame {
         this.lastBet = { ...this.bet };
 
         // 检查是否有下注 (可选)
-        // if (Object.values(this.bet).reduce((a, b) => a + b, 0) === 0) {
-        //     alert('请先下注');
-        //     return;
-        // }
+        const totalBet = Object.values(this.bet).reduce((a, b) => a + b, 0);
+        if (totalBet === 0) {
+            alert('请先下注');
+            return;
+        }
+        
+        // 检查最低投注限制 (Minimum Bet Check)
+        // 规则：总下注额必须 >= 台红最低限制
+        if (totalBet < this.config.minLimit) {
+            alert(`下注金额低于台红最低限制: ${this.config.minLimit}`);
+            return;
+        }
         
         this.isDealing = true;
         document.getElementById('btn-deal').disabled = true;
@@ -1716,9 +1752,17 @@ class BaccaratGame {
         // 结算
         setTimeout(() => {
             this.settle(pScore, bScore, pCards, bCards);
-            this.isDealing = false;
-            document.getElementById('btn-deal').disabled = false;
-            this.updateDealButtonState();
+            
+            // Check AFTER settle (because settle increments stats.total)
+            const needsReset = this.stats.total >= this.maxRounds;
+            
+            // Only re-enable if NOT resetting
+            if (!needsReset) {
+                this.isDealing = false;
+                document.getElementById('btn-deal').disabled = false;
+                this.updateDealButtonState();
+            }
+            // If needsReset, settle() will call resetGame() which handles UI
         }, 500);
     }
     
@@ -2003,14 +2047,20 @@ class BaccaratGame {
         const winScore = (winner === 'banker') ? bScore : pScore;
         this.announcer.announceResult(winner, winScore, bankerWin6, playerWin7);
 
-        handleInput(winner, pPair, bPair, lucky6Val, lucky7Val);
-        
+        // Pre-announce Last Round (when entering the last round)
+        if (this.stats.total === this.maxRounds - 1) {
+             this.announcer.announceLastRound();
+        }
+
         // Check for Game Over (Reset)
         if (this.stats.total >= this.maxRounds) {
+             // Game Over, shuffling...
              setTimeout(() => {
                  this.resetGame();
              }, 2000);
         }
+
+        handleInput(winner, pPair, bPair, lucky6Val, lucky7Val);
 
         // 清除下注（赢的钱已经加回余额，输的已经扣除）
         // 重置下注UI
@@ -2060,6 +2110,7 @@ class BaccaratGame {
         const overlay = document.getElementById('result-overlay');
         if(overlay) {
              overlay.textContent = '洗牌中...';
+             this.announcer.announceShuffling(); // Voice announcement
              overlay.classList.remove('hidden');
              setTimeout(() => {
                  overlay.classList.add('hidden');
@@ -2118,6 +2169,14 @@ class BaccaratGame {
         await new Promise(resolve => setTimeout(resolve, 3000));
         
         overlay.classList.add('hidden');
+
+        // Re-enable dealing
+        this.isDealing = false;
+        const btnDeal = document.getElementById('btn-deal');
+        if (btnDeal) {
+            btnDeal.disabled = false;
+            this.updateDealButtonState();
+        }
     }
 
     renderCard(card, container) {
@@ -2314,6 +2373,66 @@ function renderPredictionSymbol(id, color, type) {
     
     wrapper.appendChild(marker);
     el.appendChild(wrapper);
+}
+
+// 快速测试功能
+let autoPlayInterval = null;
+
+function autoPlay(rounds = 50) {
+    if (autoPlayInterval) {
+        clearInterval(autoPlayInterval);
+        autoPlayInterval = null;
+    }
+
+    const btnTest = document.getElementById('btn-test-run');
+    if (btnTest) {
+        btnTest.disabled = true;
+        btnTest.textContent = 'Running...';
+    }
+
+    if (!game) {
+        // Ensure game is initialized for stats update
+        game = new BaccaratGame();
+    }
+    
+    let count = 0;
+    autoPlayInterval = setInterval(() => {
+        if (count >= rounds) {
+            clearInterval(autoPlayInterval);
+            autoPlayInterval = null;
+            if (btnTest) {
+                btnTest.disabled = false;
+                btnTest.textContent = 'Test';
+            }
+            return;
+        }
+        
+        // Random result
+        const rand = Math.random();
+        let winner;
+        if (rand < 0.4586) winner = 'banker';
+        else if (rand < 0.4586 + 0.4462) winner = 'player';
+        else winner = 'tie';
+        
+        // Random pairs/lucky
+        const pPair = Math.random() < 0.07;
+        const bPair = Math.random() < 0.07;
+        const lucky6 = (winner === 'banker' && Math.random() < 0.05) ? (Math.random() < 0.5 ? 2 : 3) : false;
+        const lucky7 = (winner === 'player' && Math.random() < 0.05) ? (Math.random() < 0.5 ? 2 : 3) : false;
+        
+        // Update Game Logic (Stats)
+        // Simulate Score
+        const pScore = winner === 'player' ? 8 : (winner === 'tie' ? 8 : 7);
+        const bScore = winner === 'banker' ? 8 : (winner === 'tie' ? 8 : 7);
+        
+        // Use game.updateStats logic if available or direct
+        game.updateStats(winner, pPair, bPair, !!lucky6, !!lucky7);
+        
+        // Update Roads
+        handleInput(winner, pPair, bPair, lucky6, lucky7);
+        
+        count++;
+    }, 50); // Fast speed
 }
 
 // Music Controller Class

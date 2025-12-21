@@ -1024,6 +1024,15 @@ body {
     color: #333;
 }
 
+.form-group-row {
+    display: flex;
+    gap: 15px;
+}
+
+.half-width {
+    flex: 1;
+}
+
 .form-group {
     margin-bottom: 15px;
 }
