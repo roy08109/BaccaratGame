@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>眯牌功能测试 (Peek Test)</title>
+    <link rel="stylesheet" href="peek-test.css">
+</head>
+<body>
+    <h1>眯牌功能原型 (Peek Prototype)</h1>
+    <p>点击下方按钮测试眯牌效果</p>
+    
+    <div class="controls">
+        <button id="btn-test-player" style="border: 2px solid #8ecae6; color: #006699;">测试闲家眯牌 (Player)</button>
+        <button id="btn-test-banker" style="border: 2px solid #ffadad; color: #d00;">测试庄家眯牌 (Banker)</button>
+        <button id="btn-test-3rd" style="border: 2px solid #ffd700; color: #333;">测试补牌 (3rd Card)</button>
+    </div>
+
+    <!-- Peek Overlay (To be copied to index.html) -->
+    <div id="peek-overlay">
+        <div class="peek-title">闲家看牌</div>
+        <div class="peek-container">
+            <!-- Cards will be injected here -->
+        </div>
+        <button class="btn-open">直接开牌 (Open)</button>
+    </div>
+
+    <script src="peek-test.js"></script>
+</body>
+</html>

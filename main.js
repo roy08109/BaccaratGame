@@ -1269,6 +1269,189 @@ class VoiceAnnouncer {
     }
 }
 
+// 看牌控制器类
+class PeekController {
+    constructor() {
+        this.overlay = document.getElementById('peek-overlay');
+        this.container = document.querySelector('.peek-container');
+        this.btnOpen = document.querySelector('.btn-open');
+        this.title = document.querySelector('.peek-title');
+        
+        this.cards = [];
+        this.resolvePromise = null;
+        
+        if (this.btnOpen) {
+            this.btnOpen.addEventListener('click', () => this.finishPeek());
+        }
+    }
+
+    // Start Peeking Session
+    // cardsData: Array of {suit, rank, value}
+    // type: 'player' | 'banker'
+    peek(cardsData, type) {
+        return new Promise((resolve) => {
+            this.cards = cardsData;
+            this.resolvePromise = resolve;
+            
+            // Setup UI
+            if (this.title) {
+                this.title.textContent = type === 'player' ? '闲家看牌 (Player Squeeze)' : '庄家看牌 (Banker Squeeze)';
+                this.title.style.color = type === 'player' ? '#8ecae6' : '#ffadad';
+            }
+            
+            this.renderCards(cardsData);
+            if (this.overlay) {
+                this.overlay.classList.add('active');
+            } else {
+                // Fallback if overlay missing
+                resolve();
+            }
+        });
+    }
+
+    renderCards(cardsData) {
+        if (!this.container) return;
+        this.container.innerHTML = '';
+        
+        cardsData.forEach((card, index) => {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'peek-card';
+            
+            // Check if it's a 3rd card (single card scenario)
+            if (cardsData.length === 1) {
+                cardEl.classList.add('horizontal');
+            }
+            
+            // Face
+            const face = document.createElement('div');
+            face.className = 'peek-card-face';
+            this.setCardFace(face, card);
+            
+            // Add Masks for Corners (Obscure numbers)
+            // Top-Left
+            const maskTL = document.createElement('div');
+            maskTL.className = 'corner-mask top-left';
+            face.appendChild(maskTL);
+            
+            // Bottom-Right
+            const maskBR = document.createElement('div');
+            maskBR.className = 'corner-mask bottom-right';
+            face.appendChild(maskBR);
+            
+            // Back
+            const back = document.createElement('div');
+            back.className = 'peek-card-back';
+            
+            // Bind Drag Events
+            this.bindDrag(back);
+            
+            cardEl.appendChild(face);
+            cardEl.appendChild(back);
+            this.container.appendChild(cardEl);
+        });
+    }
+
+    setCardFace(element, card) {
+        // Map suit/rank to sprite position (Copy from main.js logic)
+        const suitMap = { '♠': 3, '♥': 2, '♣': 0, '♦': 1 };
+        const rankMap = {
+            'A': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6,
+            '8': 7, '9': 8, '10': 9, 'J': 10, 'Q': 11, 'K': 12
+        };
+        
+        const suitIdx = suitMap[card.suit];
+        const rankIdx = rankMap[card.rank];
+        
+        const xPos = (rankIdx * 100 / 12).toFixed(4) + '%';
+        const yPos = (suitIdx * 100 / 4).toFixed(4) + '%';
+        
+        element.style.backgroundPosition = `${xPos} ${yPos}`;
+    }
+
+    bindDrag(element) {
+        let startX, startY;
+        let isDragging = false;
+        
+        const onStart = (e) => {
+            isDragging = true;
+            const point = e.touches ? e.touches[0] : e;
+            startX = point.clientX;
+            startY = point.clientY;
+            
+            element.classList.add('dragging');
+            // e.preventDefault(); // Prevent scroll - Removed to allow some default behaviors if needed, but usually good for drag
+        };
+        
+        const onMove = (e) => {
+            if (!isDragging) return;
+            const point = e.touches ? e.touches[0] : e;
+            
+            const dx = point.clientX - startX;
+            const dy = point.clientY - startY;
+            
+            // Move and Rotate slightly
+            element.style.transform = `translate(${dx}px, ${dy}px) rotate(${dx * 0.1}deg)`;
+        };
+        
+        const onEnd = (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            element.classList.remove('dragging');
+            
+            // Check threshold (e.g., moved 100px)
+            const matrix = new WebKitCSSMatrix(window.getComputedStyle(element).transform);
+            const dist = Math.sqrt(matrix.m41 * matrix.m41 + matrix.m42 * matrix.m42); // x^2 + y^2
+            
+            if (dist > 100) {
+                // Reveal
+                element.classList.add('revealed');
+                this.checkAllRevealed();
+            } else {
+                // Snap back
+                element.style.transform = '';
+            }
+        };
+        
+        element.addEventListener('mousedown', onStart);
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onEnd);
+        
+        element.addEventListener('touchstart', onStart, { passive: false });
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onEnd);
+    }
+
+    checkAllRevealed() {
+        // Check if all backs are revealed
+        const backs = this.container.querySelectorAll('.peek-card-back');
+        const allRevealed = Array.from(backs).every(b => b.classList.contains('revealed'));
+        
+        if (allRevealed) {
+            setTimeout(() => this.finishPeek(), 500);
+        }
+    }
+
+    finishPeek() {
+        // Mark all cards as fully opened to hide masks
+        if (!this.container) return;
+        const cards = this.container.querySelectorAll('.peek-card');
+        cards.forEach(c => c.classList.add('fully-opened'));
+        
+        // Also ensure all backs are 'revealed' if button was clicked
+        const backs = this.container.querySelectorAll('.peek-card-back');
+        backs.forEach(b => b.classList.add('revealed'));
+
+        // Delay closing overlay to let user see full card
+        setTimeout(() => {
+            if (this.overlay) this.overlay.classList.remove('active');
+            if (this.resolvePromise) {
+                this.resolvePromise();
+                this.resolvePromise = null;
+            }
+        }, 1000); // 1s delay to show revealed numbers
+    }
+}
+
 // 游戏逻辑类
 class BaccaratGame {
     constructor(config) {
@@ -1317,6 +1500,7 @@ class BaccaratGame {
         };
 
         this.announcer = new VoiceAnnouncer();
+        this.peekCtrl = new PeekController();
 
         this.initUI();
         this.initDeck();
@@ -1693,6 +1877,20 @@ class BaccaratGame {
         this.isDealing = true;
         document.getElementById('btn-deal').disabled = true;
         
+        // Determine Peek Mode
+        // User Rule: Only one side can be bet (enforced in placeBet).
+        // If bet on Player -> Peek Player.
+        // If bet on Banker -> Peek Banker.
+        // If bet on Tie/Pairs only? Usually no peek, or host deals.
+        // Let's assume peek if bet on Main side.
+        const peekPlayer = this.bet.player > 0;
+        const peekBanker = this.bet.banker > 0;
+        
+        // Logic Update: If user is peeking (betting on one side), 
+        // ALL initial cards should be dealt hidden to create suspense.
+        // The opponent's cards will only be revealed AFTER the user peeks.
+        const shouldHideInitial = peekPlayer || peekBanker;
+        
         // 清理桌面
         this.clearTable();
         
@@ -1700,10 +1898,37 @@ class BaccaratGame {
         const bCards = [];
         
         // 初始两张
-        await this.drawCard('player', pCards);
-        await this.drawCard('banker', bCards);
-        await this.drawCard('player', pCards);
-        await this.drawCard('banker', bCards);
+        // Deal 4 cards
+        // P1
+        await this.drawCard('player', pCards, shouldHideInitial);
+        // B1
+        await this.drawCard('banker', bCards, shouldHideInitial);
+        // P2
+        await this.drawCard('player', pCards, shouldHideInitial);
+        // B2
+        await this.drawCard('banker', bCards, shouldHideInitial);
+        
+        // Peek Phase 1: Initial Hands
+        if (peekPlayer) {
+            // User bets Player: Peek Player first
+            await this.peekCtrl.peek(pCards, 'player');
+            // Reveal Player (User's hand)
+            await this.revealHand('player', pCards);
+            // Then Reveal Banker (Opponent)
+            await this.revealHand('banker', bCards);
+        } else if (peekBanker) {
+            // User bets Banker: Peek Banker first
+            await this.peekCtrl.peek(bCards, 'banker');
+            // Reveal Banker (User's hand)
+            await this.revealHand('banker', bCards);
+            // Then Reveal Player (Opponent)
+            await this.revealHand('player', pCards);
+        } else {
+            // No peeking involved (e.g. Tie bet only or just watching)
+            // Reveal all immediately if they were hidden (though we only hid if peekPlayer || peekBanker)
+            // But if logic changes later to always hide, we need to reveal here.
+            // Currently shouldHideInitial is false here, so cards are already visible.
+        }
         
         let pScore = this.calcScore(pCards);
         let bScore = this.calcScore(bCards);
@@ -1718,23 +1943,35 @@ class BaccaratGame {
         const natural = pScore >= 8 || bScore >= 8;
         
         if (!natural) {
-            // 闲家补牌：0-5补
+            // Logic for Third Cards (Determine draws first)
+            
+            // 1. Player Draw Check
             if (pScore <= 5) {
-                await this.drawCard('player', pCards);
                 pDraw = true;
-                pScore = this.calcScore(pCards);
-                this.updateScore('player', pScore);
             }
             
-            // 庄家补牌
+            // 2. Banker Draw Check
             if (!pDraw) {
-                // 闲家没补，庄家 0-5 补
+                // Player stood (6 or 7) -> Banker draws on 0-5
                 if (bScore <= 5) {
                     bDraw = true;
                 }
             } else {
-                // 闲家补了，庄家看闲家第三张
-                const p3 = pCards[2].value; // 0-9
+                // Player drew. Need to know the card value.
+                // We haven't drawn it yet in the code, but we can simulate the draw logic 
+                // or just draw it now but keep it hidden/unprocessed stats-wise.
+                // Let's draw Player card physically (hidden) to get the value.
+                
+                // Determine if we should hide 3rd cards initially
+                // If anyone is betting/peeking, we hide to maintain suspense order
+                const hide3rd = peekPlayer || peekBanker;
+                
+                await this.drawCard('player', pCards, hide3rd);
+                // Now pCards has the 3rd card
+                const p3Card = pCards[2];
+                const p3 = p3Card.value;
+                
+                // Banker Rule with Player 3rd Card
                 if (bScore <= 2) bDraw = true;
                 else if (bScore === 3 && p3 !== 8) bDraw = true;
                 else if (bScore === 4 && (p3 >= 2 && p3 <= 7)) bDraw = true;
@@ -1742,8 +1979,44 @@ class BaccaratGame {
                 else if (bScore === 6 && (p3 === 6 || p3 === 7)) bDraw = true;
             }
             
+            // 3. Banker Physical Draw (if needed)
             if (bDraw) {
-                await this.drawCard('banker', bCards);
+                const hide3rd = peekPlayer || peekBanker;
+                await this.drawCard('banker', bCards, hide3rd);
+            }
+            
+            // 4. Peek and Reveal Sequence
+            // Scenario A: User bets Player (Peeks Player)
+            if (pDraw && peekPlayer) {
+                // Peek Player 3rd
+                await this.peekCtrl.peek([pCards[2]], 'player');
+                // Reveal Player 3rd
+                await this.revealHand('player', pCards);
+                // If Banker drew, reveal Banker 3rd NOW (after Player opened)
+                if (bDraw) await this.revealHand('banker', bCards);
+            } 
+            // Scenario B: User bets Banker (Peeks Banker)
+            else if (bDraw && peekBanker) {
+                // Peek Banker 3rd
+                await this.peekCtrl.peek([bCards[2]], 'banker');
+                // Reveal Banker 3rd
+                await this.revealHand('banker', bCards);
+                // If Player drew, reveal Player 3rd NOW (after Banker opened)
+                if (pDraw) await this.revealHand('player', pCards);
+            }
+            // Scenario C: No Peeking (or User didn't bet on the drawing side that triggers peek)
+            else {
+                // Just reveal any hidden cards
+                if (pDraw) await this.revealHand('player', pCards);
+                if (bDraw) await this.revealHand('banker', bCards);
+            }
+            
+            // Recalculate Scores
+            if (pDraw) {
+                pScore = this.calcScore(pCards);
+                this.updateScore('player', pScore);
+            }
+            if (bDraw) {
                 bScore = this.calcScore(bCards);
                 this.updateScore('banker', bScore);
             }
@@ -1766,7 +2039,7 @@ class BaccaratGame {
         }, 500);
     }
     
-    async drawCard(who, handArr) {
+    async drawCard(who, handArr, isHidden = false) {
         if (this.deck.length < 10) this.initDeck(); // 洗牌
         
         const card = this.deck.pop();
@@ -1800,7 +2073,22 @@ class BaccaratGame {
         const xPos = (rankIdx * 100 / 12).toFixed(4) + '%';
         const yPos = (suitIdx * 100 / 4).toFixed(4) + '%';
         
-        cardEl.style.backgroundPosition = `${xPos} ${yPos}`;
+        if (isHidden) {
+            // Render Back
+            cardEl.classList.add('back');
+            // Back style is handled by CSS (or we can force it here if needed)
+            // Assuming .card.back has background-image override or we set it manually
+            // Let's use the same pattern as peek-test for back
+            cardEl.style.backgroundImage = 'none';
+            cardEl.style.background = 'repeating-linear-gradient(45deg, #1a3c75, #1a3c75 5px, #142f5c 5px, #142f5c 10px)';
+            cardEl.style.border = '2px solid white';
+            
+            // Store face info for later reveal
+            cardEl.dataset.xPos = xPos;
+            cardEl.dataset.yPos = yPos;
+        } else {
+            cardEl.style.backgroundPosition = `${xPos} ${yPos}`;
+        }
 
         // 动画
         cardEl.style.opacity = '0';
@@ -1815,6 +2103,43 @@ class BaccaratGame {
         cardEl.style.transform = 'translateY(0)';
         
         return new Promise(resolve => setTimeout(resolve, 600)); // 发牌间隔
+    }
+    
+    async revealHand(who, cards) {
+        const container = document.getElementById(`cards-${who}`);
+        const cardEls = container.querySelectorAll('.card');
+        
+        // Reveal logic: flip animation
+        // Assuming cards match order in container
+        // We only reveal those that are currently 'back'
+        
+        const promises = [];
+        
+        cardEls.forEach((el, index) => {
+            if (el.classList.contains('back')) {
+                const p = new Promise(resolve => {
+                    // Flip animation
+                    el.style.transition = 'transform 0.3s';
+                    el.style.transform = 'scaleX(0)'; // Compress
+                    
+                    setTimeout(() => {
+                        el.classList.remove('back');
+                        // Restore Face
+                        el.style.background = ''; // Clear gradient
+                        el.style.border = '';
+                        el.style.backgroundImage = "url('assets/cards.png'), url('assets/cards.svg')";
+                        el.style.backgroundSize = "1300% 500%";
+                        el.style.backgroundPosition = `${el.dataset.xPos} ${el.dataset.yPos}`;
+                        
+                        el.style.transform = 'scaleX(1)'; // Expand
+                        setTimeout(resolve, 300);
+                    }, 300);
+                });
+                promises.push(p);
+            }
+        });
+        
+        return Promise.all(promises);
     }
     
     calcScore(cards) {

@@ -1,0 +1,202 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #333;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.controls {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    z-index: 10;
+}
+
+button {
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    background: #fff;
+    border: none;
+    border-radius: 5px;
+}
+
+/* Peek Overlay */
+#peek-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 1000;
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    touch-action: none; /* Prevent scrolling */
+}
+
+#peek-overlay.active {
+    display: flex;
+}
+
+.peek-title {
+    color: #ffd700;
+    font-size: 24px;
+    margin-bottom: 20px;
+    font-weight: bold;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.peek-container {
+    display: flex;
+    gap: 20px;
+    perspective: 1000px;
+}
+
+/* Large Card Style */
+.peek-card {
+    width: 200px;
+    height: 280px;
+    position: relative;
+    border-radius: 12px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+    background: white;
+}
+
+.peek-card-face {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-radius: 12px;
+    background-image: url('assets/cards.png'), url('assets/cards.svg');
+    background-repeat: no-repeat;
+    background-size: 1300% 500%;
+    /* Position will be set by JS */
+    z-index: 1;
+}
+
+/* Corner Masks to obscure numbers during peek */
+.corner-mask {
+    position: absolute;
+    width: 40px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.9); /* Opaque white */
+    backdrop-filter: blur(8px); /* Blur effect if supported */
+    z-index: 5;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8); /* Glow to blend */
+    transition: opacity 0.5s ease;
+}
+
+.corner-mask.top-left {
+    top: 0;
+    left: 0;
+    border-bottom-right-radius: 20px;
+}
+
+.corner-mask.bottom-right {
+    bottom: 0;
+    right: 0;
+    border-top-left-radius: 20px;
+}
+
+/* Hide masks when fully revealed */
+.peek-card.fully-opened .corner-mask {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.peek-card-back {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-radius: 12px;
+    /* CSS Pattern for Card Back */
+    background: repeating-linear-gradient(
+        45deg,
+        #1a3c75,
+        #1a3c75 10px,
+        #142f5c 10px,
+        #142f5c 20px
+    );
+    border: 4px solid white;
+    box-sizing: border-box;
+    z-index: 2;
+    cursor: grab;
+    transform-origin: bottom left; /* Pivot point for lifting */
+    transition: transform 0.1s; /* Smooth follow */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.peek-card-back::after {
+    content: '';
+    width: 60%;
+    height: 60%;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 8px;
+}
+
+.peek-card-back.dragging {
+    cursor: grabbing;
+    transition: none; /* Instant follow */
+}
+
+.peek-card-back.revealed {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
+
+/* Horizontal Card Style for 3rd Card */
+.peek-card.horizontal {
+    width: 280px;
+    height: 200px;
+}
+
+.peek-card.horizontal .peek-card-face {
+    transform: rotate(-90deg);
+    transform-origin: center;
+    width: 200px; /* Original width */
+    height: 280px; /* Original height */
+    /* Center correction */
+    top: 50%;
+    left: 50%;
+    margin-top: -140px;
+    margin-left: -100px;
+}
+
+/* Horizontal Back */
+.peek-card.horizontal .peek-card-back {
+    /* Since the card container is now horizontal, the back fits naturally */
+    width: 100%;
+    height: 100%;
+    transform-origin: left center; /* Lift from side */
+}
+.btn-open {
+    margin-top: 30px;
+    padding: 12px 40px;
+    background: linear-gradient(to bottom, #ffd700, #ffaa00);
+    border: none;
+    border-radius: 25px;
+    color: #333;
+    font-weight: bold;
+    font-size: 18px;
+    box-shadow: 0 4px 10px rgba(255, 215, 0, 0.4);
+    cursor: pointer;
+}
+
+.btn-open:active {
+    transform: scale(0.95);
+}
