@@ -232,7 +232,7 @@
                 <!-- 音量滑块 -->
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="font-size: 14px;">音量 / Volume:</span>
-                    <input type="range" id="music-volume" min="0" max="1" step="0.1" value="0.5" style="flex: 1;">
+                    <input type="range" id="music-volume" min="0" max="1" step="0.1" value="0.1" style="flex: 1;">
                 </div>
             </div>
 
@@ -325,7 +325,14 @@
 
     <!-- Peek Overlay -->
     <div id="peek-overlay">
-        <div class="peek-title">闲家看牌</div>
+        <!-- Opponent Cards Area (Top) -->
+        <div class="peek-opponent-container">
+            <div class="peek-opponent-title">對家 (Opponent) <span id="peek-opponent-score"></span></div>
+            <div class="peek-opponent-cards"></div>
+        </div>
+        
+        <div class="peek-title">闲家看牌 <span id="peek-my-score"></span></div>
+        <div class="peek-initial-score" id="peek-initial-score"></div>
         <div class="peek-container">
             <!-- Cards will be injected here -->
         </div>

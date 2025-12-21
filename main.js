@@ -1155,6 +1155,7 @@ class VoiceAnnouncer {
         this.synth = window.speechSynthesis;
         this.voice = null;
         this.enabled = true; // 默认开启
+        this.volume = 0.1; // 默认音量 0.1
         this.init();
         this.initUI();
     }
@@ -1210,6 +1211,26 @@ class VoiceAnnouncer {
         this.voice = voices.find(v => v.lang === 'zh-CN') || 
                      voices.find(v => v.lang === 'zh-TW') || 
                      voices.find(v => v.lang.includes('zh'));
+    }
+    
+    speak(text, interrupt = false) {
+        if (!this.enabled) return;
+
+        if (interrupt) {
+             this.synth.cancel();
+        }
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        if (this.voice) {
+            utterance.voice = this.voice;
+        } else {
+            utterance.lang = 'zh-CN'; 
+        }
+        
+        utterance.rate = 1.0; 
+        utterance.volume = this.volume; // Use configured volume
+        
+        this.synth.speak(utterance);
     }
 
     announceResult(winner, score, isLucky6, isLucky7) {
@@ -1274,8 +1295,16 @@ class PeekController {
     constructor() {
         this.overlay = document.getElementById('peek-overlay');
         this.container = document.querySelector('.peek-container');
+        this.opponentContainer = document.querySelector('.peek-opponent-cards');
+        this.opponentTitleScore = document.getElementById('peek-opponent-score');
+        this.myTitleScore = document.getElementById('peek-my-score');
+        this.initialScoreDisplay = document.getElementById('peek-initial-score');
         this.btnOpen = document.querySelector('.btn-open');
         this.title = document.querySelector('.peek-title');
+        
+        this.announcer = new VoiceAnnouncer(); // Re-use or new instance? Global game.announcer exists.
+        // Better to pass announcer or access global game instance if possible, but let's use a new one or passed in.
+        // Actually, main.js has 'game' variable globally available after init.
         
         this.cards = [];
         this.resolvePromise = null;
@@ -1286,27 +1315,158 @@ class PeekController {
     }
 
     // Start Peeking Session
-    // cardsData: Array of {suit, rank, value}
+    // cardsData: Array of {suit, rank, value} (My Cards to Peek)
     // type: 'player' | 'banker'
-    peek(cardsData, type) {
+    // opponentCards: Array of {suit, rank, value} (Opponent Cards)
+    // opponentType: 'player' | 'banker'
+    // initialScore: Number (Optional, score of first 2 cards if peeking 3rd)
+    peek(cardsData, type, opponentCards = [], opponentType = null, initialScore = null) {
         return new Promise((resolve) => {
             this.cards = cardsData;
             this.resolvePromise = resolve;
+            this.savedInitialScore = initialScore; // Store for calculation
             
             // Setup UI
             if (this.title) {
-                this.title.textContent = type === 'player' ? '闲家看牌 (Player Squeeze)' : '庄家看牌 (Banker Squeeze)';
-                this.title.style.color = type === 'player' ? '#8ecae6' : '#ffadad';
+                // ... (Existing code)
+                const typeText = type === 'player' ? '闲家看牌 (Player Squeeze)' : '庄家看牌 (Banker Squeeze)';
+                const color = type === 'player' ? '#8ecae6' : '#ffadad';
+                
+                this.title.innerHTML = `${typeText} <span id="peek-my-score"></span>`;
+                this.title.style.color = color;
+                
+                this.myTitleScore = document.getElementById('peek-my-score');
+            }
+            
+            // Clear previous score display
+            if (this.opponentTitleScore) this.opponentTitleScore.textContent = '';
+            if (this.myTitleScore) this.myTitleScore.textContent = '';
+            if (this.initialScoreDisplay) {
+                this.initialScoreDisplay.textContent = '';
+                if (initialScore !== null) {
+                    this.initialScoreDisplay.textContent = `(首两张: ${initialScore}点)`;
+                }
             }
             
             this.renderCards(cardsData);
+            this.renderOpponentCards(opponentCards, opponentType);
+            
             if (this.overlay) {
                 this.overlay.classList.add('active');
             } else {
-                // Fallback if overlay missing
                 resolve();
             }
         });
+    }
+
+    renderOpponentCards(cardsData, type) {
+        if (!this.opponentContainer) return;
+        this.opponentContainer.innerHTML = '';
+        
+        // If it's 3rd card peek (my cards length == 1), opponent might have 3 cards.
+        // We only want to show the relevant opponent cards.
+        // If initial deal (2 cards), show 2.
+        // If 3rd card deal, usually we want to see the opponent's 3rd card if they have one?
+        // Or all their cards? User said "最上方加入對家1張的補牌".
+        // If opponent has 3 cards, and I am peeking my 3rd card.
+        // We should render all of them, but focus on the new one?
+        // Or only render the new one if I am peeking only the new one?
+        // `cardsData` passed to `peek` is what I am peeking.
+        // If `cardsData` has 1 card (3rd card), and `opponentCards` has 3 cards.
+        // We probably want to show all 3 opponent cards so we can calculate total score.
+        
+        const isSupplementPeek = this.cards.length === 1;
+        
+        // If supplement peek, and opponent has 3 cards, we show all 3.
+        // The first 2 are already revealed in main game, so they should be face up here too?
+        // Or hidden until clicked?
+        // "点击可打开牌" implies hidden initially.
+        // But in main game, opponent's first 2 cards are already revealed before 3rd card deal?
+        // Let's check game logic:
+        // P1, B1, P2, B2 -> Peek -> Reveal Initial.
+        // Then Draw 3rd.
+        // So opponent's first 2 cards ARE revealed.
+        // We should render them face up, and only the 3rd card face down?
+        
+        cardsData.forEach((card, index) => {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'peek-opponent-card';
+            
+            // Horizontal for 3rd card
+            if (index === 2) { 
+                cardEl.classList.add('horizontal');
+            }
+            
+            // Face
+            const face = document.createElement('div');
+            face.className = 'peek-opponent-card-face';
+            this.setCardFace(face, card);
+            
+            // Back
+            const back = document.createElement('div');
+            back.className = 'peek-opponent-card-back';
+            
+            // Logic for initial visibility:
+            // If it's the 3rd card (index 2), it should be hidden (back visible).
+            // If it's index 0 or 1:
+            //    If we are in supplement peek (isSupplementPeek), they should be already revealed (face visible).
+            //    If we are in initial peek, they should be hidden (back visible).
+            
+            let isRevealed = false;
+            if (isSupplementPeek && index < 2) {
+                isRevealed = true;
+            }
+            
+            if (isRevealed) {
+                cardEl.classList.add('revealed');
+            }
+            
+            // Click to reveal
+            cardEl.onclick = () => {
+                if (!cardEl.classList.contains('revealed')) {
+                    cardEl.classList.add('revealed');
+                    
+                    // Check if this was the last card to reveal (or specific logic)
+                    // User: "打開後報對家合共點數"
+                    // We should check if ALL opponent cards are revealed now.
+                    this.checkOpponentReveal(cardsData, type);
+                }
+            };
+            
+            cardEl.appendChild(face);
+            cardEl.appendChild(back);
+            this.opponentContainer.appendChild(cardEl);
+        });
+        
+        // If all already revealed (e.g. no 3rd card for opponent), show score?
+        // Usually opponentCards has 3rd card if we are here.
+    }
+    
+    checkOpponentReveal(cardsData, type) {
+        const els = this.opponentContainer.querySelectorAll('.peek-opponent-card');
+        const allRevealed = Array.from(els).every(el => el.classList.contains('revealed'));
+        
+        if (allRevealed) {
+            // Calculate Score
+            const sum = cardsData.reduce((acc, c) => acc + c.value, 0);
+            const score = sum % 10;
+            
+            // Announce
+            const typeName = type === 'banker' ? '庄' : '闲';
+            const text = `${typeName}${score}点`;
+            
+            if (this.opponentTitleScore) {
+                this.opponentTitleScore.textContent = ` - ${text}`;
+            }
+            
+            // Speak
+            // Use global game announcer if available to avoid conflict
+            if (typeof game !== 'undefined' && game.announcer) {
+                game.announcer.speak(text);
+            } else if (this.announcer) {
+                this.announcer.speak(text);
+            }
+        }
     }
 
     renderCards(cardsData) {
@@ -1432,6 +1592,43 @@ class PeekController {
         const allRevealed = Array.from(backs).every(b => b.classList.contains('revealed'));
         
         if (allRevealed) {
+            // Calculate My Score
+            if (this.myTitleScore && this.cards) {
+                // If peeking supplement (1 card), we need to add initial score if passed?
+                // Wait, calcScore in main.js takes array of cards.
+                // Here this.cards is only the cards being peeked (e.g. 1 card).
+                // So the score displayed here is ONLY the score of the peeked card(s)?
+                // Or total score?
+                // User asked: "在看補牌过程中可顯示首2張牌合共的點數". I added that separately.
+                // But the main score "peek-my-score" should probably show the FINAL total score after reveal?
+                // Or just the new card value?
+                // Usually "Player X Points" means total.
+                // If I only have the 3rd card in `this.cards`, I can't calculate total unless I know initial.
+                // I can extract initial score from the display string I just set, or pass it to class state.
+                // Let's rely on the passed `initialScore` if I store it.
+                
+                // Let's store initialScore in the class instance in peek()
+                // I need to update peek() to store it.
+                
+                let totalScore = 0;
+                const currentCardsScore = this.cards.reduce((acc, c) => acc + c.value, 0);
+                
+                if (this.savedInitialScore !== null && this.cards.length === 1) {
+                     totalScore = (this.savedInitialScore + currentCardsScore) % 10;
+                } else {
+                     totalScore = currentCardsScore % 10;
+                }
+                
+                this.myTitleScore.textContent = ` - ${totalScore}点`;
+                
+                // Speak My Score
+                const typeName = this.title.textContent.includes('闲') ? '闲' : '庄';
+                const text = `${typeName}${totalScore}点`;
+                if (typeof game !== 'undefined' && game.announcer) {
+                    game.announcer.speak(text);
+                }
+            }
+
             setTimeout(() => this.finishPeek(), 500);
         }
     }
@@ -1942,14 +2139,16 @@ class BaccaratGame {
         if (shouldPeek) {
             if (peekPlayer) {
                 // User bets Player: Peek Player first
-                await this.peekCtrl.peek(pCards, 'player');
+                // Opponent: Banker (bCards)
+                await this.peekCtrl.peek(pCards, 'player', bCards, 'banker');
                 // Reveal Player (User's hand)
                 await this.revealHand('player', pCards);
                 // Then Reveal Banker (Opponent)
                 await this.revealHand('banker', bCards);
             } else if (peekBanker) {
                 // User bets Banker: Peek Banker first
-                await this.peekCtrl.peek(bCards, 'banker');
+                // Opponent: Player (pCards)
+                await this.peekCtrl.peek(bCards, 'banker', pCards, 'player');
                 // Reveal Banker (User's hand)
                 await this.revealHand('banker', bCards);
                 // Then Reveal Player (Opponent)
@@ -2022,7 +2221,11 @@ class BaccaratGame {
             // Scenario A: User bets Player (Peeks Player)
             if (shouldPeek && pDraw && peekPlayer) {
                 // Peek Player 3rd
-                await this.peekCtrl.peek([pCards[2]], 'player');
+                // Opponent might have 3 cards now (if bDraw executed) or 2.
+                // We should pass opponent's current hand.
+                // Calculate Initial Score (P1 + P2)
+                const initialPScore = this.calcScore([pCards[0], pCards[1]]);
+                await this.peekCtrl.peek([pCards[2]], 'player', bCards, 'banker', initialPScore);
                 // Reveal Player 3rd
                 await this.revealHand('player', pCards);
                 // If Banker drew, reveal Banker 3rd NOW (after Player opened)
@@ -2031,7 +2234,10 @@ class BaccaratGame {
             // Scenario B: User bets Banker (Peeks Banker)
             else if (shouldPeek && bDraw && peekBanker) {
                 // Peek Banker 3rd
-                await this.peekCtrl.peek([bCards[2]], 'banker');
+                // Opponent: Player (pCards)
+                // Calculate Initial Score (B1 + B2)
+                const initialBScore = this.calcScore([bCards[0], bCards[1]]);
+                await this.peekCtrl.peek([bCards[2]], 'banker', pCards, 'player', initialBScore);
                 // Reveal Banker 3rd
                 await this.revealHand('banker', bCards);
                 // If Player drew, reveal Player 3rd NOW (after Banker opened)
@@ -2821,14 +3027,14 @@ class MusicController {
 
         this.bgm = new Audio('assets/bgm.mp3');
         this.bgm.loop = true;
-        this.bgm.volume = 0.3;
+        this.bgm.volume = 0.1; // Default 0.1
         this.isPlaying = false;
         
         // Controls in Settings
         this.btnSetting = document.getElementById('btn-music-toggle');
         this.volumeSlider = document.getElementById('music-volume');
         if (this.volumeSlider) {
-             this.volumeSlider.value = 0.3;
+             this.volumeSlider.value = 0.1;
         }
         this.statusText = document.getElementById('music-status-text');
         
@@ -2843,7 +3049,13 @@ class MusicController {
     init() {
         if (this.volumeSlider) {
             this.volumeSlider.addEventListener('input', (e) => {
-                this.bgm.volume = e.target.value;
+                const vol = parseFloat(e.target.value);
+                this.bgm.volume = vol;
+                
+                // Also update Voice Announcer if game instance exists
+                if (typeof game !== 'undefined' && game.announcer) {
+                    game.announcer.volume = vol;
+                }
             });
         }
 
