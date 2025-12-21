@@ -1678,16 +1678,16 @@ class BaccaratGame {
 
         // 检查是否有下注 (可选)
         const totalBet = Object.values(this.bet).reduce((a, b) => a + b, 0);
-        if (totalBet === 0) {
-            alert('请先下注');
-            return;
-        }
         
-        // 检查最低投注限制 (Minimum Bet Check)
-        // 规则：总下注额必须 >= 台红最低限制
-        if (totalBet < this.config.minLimit) {
-            alert(`下注金额低于台红最低限制: ${this.config.minLimit}`);
-            return;
+        // 飞牌规则：如果没有下注，也允许发牌（即飞牌）
+        // 只有在有下注的情况下，才检查最低投注限制
+        if (totalBet > 0) {
+            // 检查最低投注限制 (Minimum Bet Check)
+            // 规则：总下注额必须 >= 台红最低限制
+            if (totalBet < this.config.minLimit) {
+                alert(`下注金额低于台红最低限制: ${this.config.minLimit}`);
+                return;
+            }
         }
         
         this.isDealing = true;
