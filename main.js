@@ -1262,6 +1262,11 @@ class VoiceAnnouncer {
         this.speak('洗牌中，请稍等', true); // Interrupt previous
     }
 
+    announceCut(count) {
+        if (!this.synth || !this.enabled) return;
+        this.speak(`消牌${count}张，请投注`, true);
+    }
+
     speak(text, interrupt = true) {
         // 取消当前的播报
         if (interrupt) {
@@ -2737,6 +2742,11 @@ class BaccaratGame {
             burnCount = 10;
         } else if (indicatorCard.rank === 'A') {
             burnCount = 1;
+        }
+        
+        // Announce Cut
+        if (this.announcer) {
+            this.announcer.announceCut(burnCount);
         }
         
         // Update Info Text
