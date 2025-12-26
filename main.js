@@ -1320,7 +1320,8 @@ class PeekController {
     // opponentCards: Array of {suit, rank, value} (Opponent Cards)
     // opponentType: 'player' | 'banker'
     // initialScore: Number (Optional, score of first 2 cards if peeking 3rd)
-    peek(cardsData, type, opponentCards = [], opponentType = null, initialScore = null) {
+    // opponentFullyRevealed: Boolean (Optional, if true, opponent cards are shown face up)
+    peek(cardsData, type, opponentCards = [], opponentType = null, initialScore = null, opponentFullyRevealed = false) {
         return new Promise((resolve) => {
             this.cards = cardsData;
             this.resolvePromise = resolve;
@@ -1349,7 +1350,7 @@ class PeekController {
             }
             
             this.renderCards(cardsData);
-            this.renderOpponentCards(opponentCards, opponentType);
+            this.renderOpponentCards(opponentCards, opponentType, opponentFullyRevealed);
             
             if (this.overlay) {
                 this.overlay.classList.add('active');
@@ -1359,7 +1360,7 @@ class PeekController {
         });
     }
 
-    renderOpponentCards(cardsData, type) {
+    renderOpponentCards(cardsData, type, forceReveal = false) {
         if (!this.opponentContainer) return;
         this.opponentContainer.innerHTML = '';
         
@@ -1417,6 +1418,10 @@ class PeekController {
                 isRevealed = true;
             }
             
+            if (forceReveal) {
+                isRevealed = true;
+            }
+            
             if (isRevealed) {
                 cardEl.classList.add('revealed');
             }
@@ -1438,8 +1443,10 @@ class PeekController {
             this.opponentContainer.appendChild(cardEl);
         });
         
-        // If all already revealed (e.g. no 3rd card for opponent), show score?
-        // Usually opponentCards has 3rd card if we are here.
+        // If forceReveal is true, check score immediately
+        if (forceReveal) {
+            this.checkOpponentReveal(cardsData, type);
+        }
     }
     
     checkOpponentReveal(cardsData, type) {
@@ -2064,6 +2071,9 @@ class BaccaratGame {
     async deal() {
         if (this.isDealing) return;
         
+        this.isDealing = true;
+        document.getElementById('btn-deal').disabled = true;
+        
         // Check Last Round Warning
         if (this.stats.total + 1 === this.maxRounds) {
             const overlay = document.getElementById('result-overlay');
@@ -2095,12 +2105,11 @@ class BaccaratGame {
             // 规则：总下注额必须 >= 台红最低限制
             if (totalBet < this.config.minLimit) {
                 alert(`下注金额低于台红最低限制: ${this.config.minLimit}`);
+                this.isDealing = false;
+                document.getElementById('btn-deal').disabled = false;
                 return;
             }
         }
-        
-        this.isDealing = true;
-        document.getElementById('btn-deal').disabled = true;
         
         // Determine Peek Mode
         // User Rule: Only one side can be bet (enforced in placeBet).
@@ -2233,15 +2242,31 @@ class BaccaratGame {
             } 
             // Scenario B: User bets Banker (Peeks Banker)
             else if (shouldPeek && bDraw && peekBanker) {
-                // Peek Banker 3rd
-                // Opponent: Player (pCards)
                 // Calculate Initial Score (B1 + B2)
                 const initialBScore = this.calcScore([bCards[0], bCards[1]]);
-                await this.peekCtrl.peek([bCards[2]], 'banker', pCards, 'player', initialBScore);
+                
+                // Logic: If Banker has 3,4,5,6 (initialBScore >= 3), they rely on Player's card to draw.
+                // So Player MUST reveal first.
+                // If Banker has 0,1,2, they force draw. Player doesn't need to reveal first.
+                
+                let forceOpponentReveal = false;
+                
+                if (initialBScore >= 3 && pDraw) {
+                    forceOpponentReveal = true;
+                    // Reveal Player 3rd FIRST
+                    await this.revealHand('player', pCards);
+                }
+                
+                // Peek Banker 3rd
+                await this.peekCtrl.peek([bCards[2]], 'banker', pCards, 'player', initialBScore, forceOpponentReveal);
+                
                 // Reveal Banker 3rd
                 await this.revealHand('banker', bCards);
-                // If Player drew, reveal Player 3rd NOW (after Banker opened)
-                if (pDraw) await this.revealHand('player', pCards);
+                
+                // If NOT forced reveal yet, reveal Player 3rd NOW (after Banker opened)
+                if (pDraw && !forceOpponentReveal) {
+                    await this.revealHand('player', pCards);
+                }
             }
             // Scenario C: No Peeking (or User didn't bet on the drawing side that triggers peek)
             else {

@@ -1246,6 +1246,11 @@ body {
     color: #000; /* Black */
     line-height: 1;
     z-index: 3;
+    text-shadow: 
+        1px 1px 0 #fff,
+        -1px 1px 0 #fff,
+        1px -1px 0 #fff,
+        -1px -1px 0 #fff; /* White outline */
 }
 
 /* Peek Overlay */
@@ -1259,8 +1264,9 @@ body {
     z-index: 1000;
     display: none; /* Hidden by default */
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-end; /* Align to bottom */
     align-items: center;
+    padding-bottom: 50px; /* Space from bottom */
     touch-action: none; /* Prevent scrolling */
 }
 
@@ -1268,16 +1274,16 @@ body {
     display: flex;
 }
 
-/* Peek Opponent Area */
+/* Opponent Area (Top) */
 .peek-opponent-container {
-    position: absolute;
-    top: 20px;
-    left: 0;
+    /* position: absolute;  Removed to flow naturally above title */
+    /* top: 20px; */
     width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 10px;
+    margin-bottom: 20px; /* Space between opponent area and my title */
 }
 
 .peek-opponent-title {
