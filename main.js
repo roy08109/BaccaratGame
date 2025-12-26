@@ -598,24 +598,12 @@ class RoadMap {
             if (winner === 'banker' && lucky6) {
                 const num = document.createElement('div');
                 num.className = 'lucky-number';
-                // User Requirement: "Lucky 6 (2 cards) show 2", but "Lucky 6" means point 6.
-                // Standard convention is usually '6'.
-                // However, user specifically asked for "2" for 2 cards and "3" for 3 cards (Lucky 7).
-                // Let's implement EXACTLY what was asked to avoid guessing.
-                // "Lucky 6 2 cards -> 2"
+                // User Requirement: Show '2' if 2 cards, '3' if 3 cards
                 if (lucky6 === 2) {
                     num.textContent = '2';
                     marker.appendChild(num);
                 } else if (lucky6 === 3) {
-                    // User didn't specify for 3 cards Lucky 6, but implied "2,3" in center.
-                    // Assuming they want card counts displayed if it's a Lucky win?
-                    // Or maybe only specific cases.
-                    // Let's just do 2 for now as explicitly requested.
-                    // Actually, let's play safe and use '6' which is standard, 
-                    // unless I am 100% sure "2" means card count display.
-                    // Re-reading: "如幸運6 2張牌 在紅圈中心顯示黃色2字" -> Very specific.
-                    // I will show '2'.
-                    num.textContent = '2'; // Override to 2
+                    num.textContent = '3';
                     marker.appendChild(num);
                 }
             }
@@ -623,12 +611,14 @@ class RoadMap {
             if (winner === 'player' && lucky7) {
                  const num = document.createElement('div');
                  num.className = 'lucky-number';
-                 // User Requirement: "Lucky 7 3 cards -> 3"
-                 if (lucky7 === 3) {
+                 // User Requirement: Show '2' if 2 cards, '3' if 3 cards
+                 if (lucky7 === 2) {
+                     num.textContent = '2';
+                     marker.appendChild(num);
+                 } else if (lucky7 === 3) {
                      num.textContent = '3';
                      marker.appendChild(num);
                  }
-                 // If Lucky 7 with 2 cards? No instruction.
             }
             
         } else if (this.type === 'dayan') {
