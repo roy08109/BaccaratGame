@@ -7,191 +7,274 @@
     <link rel="stylesheet" href="main.css">
 </head>
 <body>
-    <div class="container">
-        <!-- 游戏区 -->
-        <div class="game-area">
-            <!-- Table Limit Display -->
-            <div id="table-limit-display" class="table-limit-display" data-i18n="table_limit_display">台红: 25-150万</div>
-            
-            <!-- Settings Button -->
-            <button id="btn-settings-toggle" class="btn-settings-toggle">⚙️</button>
-            
-            <!-- Music Button (Top Right) -->
-            <button id="btn-music-toggle-main" class="btn-music-toggle-main">🎵</button>
-            
-            <!-- Peek Toggle Button (Below Music Button) -->
-            <button id="btn-peek-toggle" class="btn-peek-toggle">👁️</button>
-            
-            <!-- 发牌/显示区 -->
-            <div class="deal-area">
-                <div class="hand player-hand">
-                    <div class="hand-title text-player"><span data-i18n="player_label">闲 (Player)</span> <span id="score-player" class="score">0</span></div>
-                    <div class="cards-box" id="cards-player">
-                        <!-- <div class="card"></div> -->
-                    </div>
-                </div>
-                <div class="vs-divider">VS</div>
-                <div class="hand banker-hand">
-                    <div class="hand-title text-banker"><span data-i18n="banker_label">庄 (Banker)</span> <span id="score-banker" class="score">0</span></div>
-                    <div class="cards-box" id="cards-banker">
-                        <!-- <div class="card"></div> -->
-                    </div>
-                </div>
-                <!-- 结果显示 -->
-                <div id="result-overlay" class="result-overlay hidden"></div>
-                <!-- Video Overlay -->
-                <div id="video-overlay" class="video-overlay hidden">
-                    <video id="game-video" playsinline muted></video>
+    <div class="app-container">
+        
+        <!-- VIEW 1: LOGIN -->
+        <div id="login-view" class="view-section">
+            <div class="login-card">
+                <h2>百家乐大厅 Login</h2>
+                
+                <div class="form-group">
+                    <label>昵称 / Nickname</label>
+                    <input type="text" id="login-nickname" value="Player1" class="form-input">
                 </div>
                 
-                <!-- Cut Card Overlay -->
-                <!-- Removed from here -->
+                <div class="form-group">
+                    <label>初始金额 / Balance</label>
+                    <input type="number" id="login-balance" value="10000" class="form-input">
+                </div>
+                
+                <div class="form-group">
+                    <label>台红限制 / Table Limits</label>
+                    <select id="login-table-limit" class="form-select">
+                        <option value="25-1500000">25 - 150万</option>
+                        <option value="100-5000000">100 - 500万</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>抽水模式 / Commission</label>
+                    <div class="radio-group">
+                        <label class="radio-label"><input type="radio" name="login-commission" value="classic"> 传统(0.95)</label>
+                        <label class="radio-label"><input type="radio" name="login-commission" value="super6" checked> 免佣(Super6)</label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>玩法选项 / Side Bets</label>
+                    <div class="checkbox-group-vertical">
+                        <label><input type="checkbox" id="login-sb-lucky6" checked> 开启“幸运6”</label>
+                        <label><input type="checkbox" id="login-sb-lucky7" checked> 开启“幸运7”</label>
+                        <label><input type="checkbox" id="login-sb-super7" checked> 开启“超级幸运7”</label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>语言 / Language</label>
+                    <select id="login-language" class="form-select">
+                        <option value="zh-CN">简体中文</option>
+                        <option value="zh-TW">繁體中文</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>音效设置 / Audio</label>
+                    <div class="volume-control-row">
+                        <span>BGM: <input type="range" id="login-bgm-volume" min="0" max="100" value="10"></span>
+                    </div>
+                    <div class="volume-control-row">
+                        <span>Voice: <input type="range" id="login-voice-volume" min="0" max="100" value="100"></span>
+                    </div>
+                </div>
+                
+                <button id="btn-enter-lobby" class="btn-primary full-width">进入大厅 (Enter Lobby)</button>
             </div>
+        </div>
 
-            <!-- 下注区 -->
-            <div class="betting-area" style="position: relative;">
-                <!-- Cut Card Overlay (Moved Here) -->
-                <div id="cut-overlay" class="cut-overlay hidden">
-                    <div class="cut-content">
-                        <div class="indicator-section">
-                            <h3>指示牌</h3>
-                            <div id="cut-indicator-card" class="card"></div>
-                            <div id="cut-info-text">K点 - 销牌10张</div>
+        <!-- VIEW 2: LOBBY -->
+        <div id="lobby-view" class="view-section hidden">
+            <div class="lobby-header">
+                <div class="user-info">
+                    <span class="avatar">👤</span>
+                    <span id="lobby-nickname" class="nickname">Player</span>
+                    <span class="divider">|</span>
+                    <span class="currency">💰</span><span id="lobby-balance" class="balance">10,000</span>
+                </div>
+                <button id="btn-logout" class="btn-secondary-small">退出</button>
+            </div>
+            <div class="lobby-content">
+                <div class="lobby-title">选择牌桌 (Select Table)</div>
+                <div id="lobby-table-list" class="lobby-list">
+                    <!-- Tables will be generated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: GAME -->
+        <div id="game-view" class="view-section hidden">
+            <div class="container">
+                <!-- 游戏区 -->
+                <div class="game-area">
+                    <!-- Table Limit Display -->
+                    <div id="table-limit-display" class="table-limit-display" data-i18n="table_limit_display">台红: 25-150万</div>
+                    
+                    <!-- Settings Button -->
+                    <button id="btn-settings-toggle" class="btn-settings-toggle">⚙️</button>
+                    
+                    <!-- Music Button (Top Right) -->
+                    <button id="btn-music-toggle-main" class="btn-music-toggle-main">🎵</button>
+                    
+                    <!-- Peek Toggle Button (Below Music Button) -->
+                    <button id="btn-peek-toggle" class="btn-peek-toggle">👁️</button>
+                    
+                    <!-- 发牌/显示区 -->
+                    <div class="deal-area">
+                        <div class="hand player-hand">
+                            <div class="hand-title text-player"><span data-i18n="player_label">闲 (Player)</span> <span id="score-player" class="score">0</span></div>
+                            <div class="cards-box" id="cards-player">
+                                <!-- <div class="card"></div> -->
+                            </div>
                         </div>
-                        <div class="burn-section">
-                            <h3>销牌</h3>
-                            <div id="burn-cards-grid" class="burn-grid">
-                                <!-- Cards will be injected here -->
+                        <div class="vs-divider">VS</div>
+                        <div class="hand banker-hand">
+                            <div class="hand-title text-banker"><span data-i18n="banker_label">庄 (Banker)</span> <span id="score-banker" class="score">0</span></div>
+                            <div class="cards-box" id="cards-banker">
+                                <!-- <div class="card"></div> -->
+                            </div>
+                        </div>
+                        <!-- 结果显示 -->
+                        <div id="result-overlay" class="result-overlay hidden"></div>
+                        <!-- Video Overlay -->
+                        <div id="video-overlay" class="video-overlay hidden">
+                            <video id="game-video" playsinline muted></video>
+                        </div>
+                    </div>
+
+                    <!-- 下注区 -->
+                    <div class="betting-area" style="position: relative;">
+                        <!-- Cut Card Overlay (Moved Here) -->
+                        <div id="cut-overlay" class="cut-overlay hidden">
+                            <div class="cut-content">
+                                <div class="indicator-section">
+                                    <h3>指示牌</h3>
+                                    <div id="cut-indicator-card" class="card"></div>
+                                    <div id="cut-info-text">K点 - 销牌10张</div>
+                                </div>
+                                <div class="burn-section">
+                                    <h3>销牌</h3>
+                                    <div id="burn-cards-grid" class="burn-grid">
+                                        <!-- Cards will be injected here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bet-grid">
+                            <!-- Top Row Container for Side Bets -->
+                            <div class="side-bets-row">
+                                <button class="bet-btn bet-lucky7" id="bet-lucky7">
+                                    <div class="side-label" data-i18n="lucky7">幸运7</div>
+                                    <div class="odds">1:6/15</div>
+                                </button>
+                                <button class="bet-btn bet-super-lucky7" id="bet-super-lucky7">
+                                    <div class="side-label" data-i18n="super_lucky7">超幸7</div>
+                                    <div class="odds">1:30+</div>
+                                </button>
+                                <button class="bet-btn bet-lucky6" id="bet-lucky6">
+                                    <div class="side-label" data-i18n="lucky6">幸6(2/3)</div>
+                                    <div class="odds">1:12/20</div>
+                                </button>
+                                <button class="bet-btn bet-lucky6-2" id="bet-lucky6-2">
+                                    <div class="side-label" data-i18n="lucky6_2">幸6(2张)</div>
+                                    <div class="odds">1:22</div>
+                                </button>
+                                <button class="bet-btn bet-lucky6-3" id="bet-lucky6-3">
+                                    <div class="side-label" data-i18n="lucky6_3">幸6(3张)</div>
+                                    <div class="odds">1:50</div>
+                                </button>
+                            </div>
+
+                            <!-- Pairs & Tie (Row 2) -->
+                            <button class="bet-btn bet-player-pair" id="bet-player-pair">
+                                <div data-i18n="player_pair">闲对</div>
+                                <div class="odds">1:11</div>
+                            </button>
+                            <button class="bet-btn bet-tie" id="bet-tie">
+                                <div data-i18n="tie">和</div>
+                                <div class="odds">1:8</div>
+                            </button>
+                            <button class="bet-btn bet-banker-pair" id="bet-banker-pair">
+                                <div data-i18n="banker_pair">庄对</div>
+                                <div class="odds">1:11</div>
+                            </button>
+                            
+                            <!-- Main Bets (Bottom) -->
+                            <button class="bet-btn bet-player-main" id="bet-player">
+                                <div class="main-label" data-i18n="player_main">闲</div>
+                                <div class="odds">1:1</div>
+                            </button>
+                            <button class="bet-btn bet-banker-main" id="bet-banker">
+                                <div class="main-label" data-i18n="banker_main">庄</div>
+                                <div class="odds" id="banker-odds">0.95:1</div>
+                            </button>
+                        </div>
+                        
+                        <!-- 操作栏 -->
+                        <div class="controls-bar">
+                            <div class="balance-stats-wrapper">
+                                <div class="balance-display-overlay"><button id="btn-balance-info" class="btn-info-small">?</button><span data-i18n="balance_label">余额:</span> <span id="balance-amount" class="text-color-white">10,000</span></div>
+                                <div class="game-stats-display">
+                                    <span><span data-i18n="stat_total">总:</span><b id="stat-total">0</b></span>
+                                    <span class="stat-banker"><span data-i18n="stat_banker">庄:</span><b id="stat-banker">0</b></span>
+                                    <span class="stat-player"><span data-i18n="stat_player">闲:</span><b id="stat-player">0</b></span>
+                                    <span class="stat-tie"><span data-i18n="stat_tie">和:</span><b id="stat-tie">0</b></span>
+                                    <span class="stat-banker"><span data-i18n="stat_bpair">庄对:</span><b id="stat-bpair">0</b></span>
+                                    <span class="stat-player"><span data-i18n="stat_ppair">闲对:</span><b id="stat-ppair">0</b></span>
+                                    <span><span data-i18n="stat_lucky6">幸6:</span><b id="stat-lucky6">0</b></span>
+                                    <span><span data-i18n="stat_lucky7">幸7:</span><b id="stat-lucky7">0</b></span>
+                                </div>
+                            </div>
+                            <div class="chips-scroll-wrapper">
+                                <button class="chip-scroll-btn" id="chip-scroll-left">&lt;</button>
+                                <div class="chips-group" id="chips-scroll-area">
+                                    <div class="chip chip-25 selected" data-val="25">25</div>
+                                    <div class="chip chip-100" data-val="100">100</div>
+                                    <div class="chip chip-500" data-val="500">500</div>
+                                    <div class="chip chip-1000" data-val="1000">1千</div>
+                                    <div class="chip chip-5000" data-val="5000">5千</div>
+                                    <div class="chip chip-10000" data-val="10000">1万</div>
+                                    <div class="chip chip-100000" data-val="100000">10万</div>
+                                </div>
+                                <button class="chip-scroll-btn" id="chip-scroll-right">&gt;</button>
+                            </div>
+                            <div class="action-group">
+                                <button id="btn-test-run" class="btn-action btn-clear" style="background: #e91e63; display: none;">Test</button>
+                                <button id="btn-clear" class="btn-action btn-clear" data-i18n="btn_clear">清除</button>
+                                <button id="btn-deal" class="btn-action btn-deal" data-i18n="btn_deal">发牌</button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="bet-grid">
-                    <!-- Top Row Container for Side Bets -->
-                    <div class="side-bets-row">
-                        <button class="bet-btn bet-lucky7" id="bet-lucky7">
-                            <div class="side-label" data-i18n="lucky7">幸运7</div>
-                            <div class="odds">1:6/15</div>
-                        </button>
-                        <button class="bet-btn bet-super-lucky7" id="bet-super-lucky7">
-                            <div class="side-label" data-i18n="super_lucky7">超幸7</div>
-                            <div class="odds">1:30+</div>
-                        </button>
-                        <button class="bet-btn bet-lucky6" id="bet-lucky6">
-                            <div class="side-label" data-i18n="lucky6">幸6(2/3)</div>
-                            <div class="odds">1:12/20</div>
-                        </button>
-                        <button class="bet-btn bet-lucky6-2" id="bet-lucky6-2">
-                            <div class="side-label" data-i18n="lucky6_2">幸6(2张)</div>
-                            <div class="odds">1:22</div>
-                        </button>
-                        <button class="bet-btn bet-lucky6-3" id="bet-lucky6-3">
-                            <div class="side-label" data-i18n="lucky6_3">幸6(3张)</div>
-                            <div class="odds">1:50</div>
-                        </button>
-                    </div>
+                <!-- 路单区 -->
+                <div class="roadmap-area">
+                    <!-- 大路 -->
+                    <div class="grid-dalu" id="dalu"></div>
 
-                    <!-- Pairs & Tie (Row 2) -->
-                    <button class="bet-btn bet-player-pair" id="bet-player-pair">
-                        <div data-i18n="player_pair">闲对</div>
-                        <div class="odds">1:11</div>
-                    </button>
-                    <button class="bet-btn bet-tie" id="bet-tie">
-                        <div data-i18n="tie">和</div>
-                        <div class="odds">1:8</div>
-                    </button>
-                    <button class="bet-btn bet-banker-pair" id="bet-banker-pair">
-                        <div data-i18n="banker_pair">庄对</div>
-                        <div class="odds">1:11</div>
-                    </button>
-                    
-                    <!-- Main Bets (Bottom) -->
-                    <button class="bet-btn bet-player-main" id="bet-player">
-                        <div class="main-label" data-i18n="player_main">闲</div>
-                        <div class="odds">1:1</div>
-                    </button>
-                    <button class="bet-btn bet-banker-main" id="bet-banker">
-                        <div class="main-label" data-i18n="banker_main">庄</div>
-                        <div class="odds" id="banker-odds">0.95:1</div>
-                    </button>
-                </div>
-                
-                <!-- 操作栏 -->
-                <div class="controls-bar">
-                    <div class="balance-stats-wrapper">
-                        <div class="balance-display-overlay"><button id="btn-balance-info" class="btn-info-small">?</button><span data-i18n="balance_label">余额:</span> <span id="balance-amount" class="text-color-white">10,000</span></div>
-                        <div class="game-stats-display">
-                            <span><span data-i18n="stat_total">总:</span><b id="stat-total">0</b></span>
-                            <span class="stat-banker"><span data-i18n="stat_banker">庄:</span><b id="stat-banker">0</b></span>
-                            <span class="stat-player"><span data-i18n="stat_player">闲:</span><b id="stat-player">0</b></span>
-                            <span class="stat-tie"><span data-i18n="stat_tie">和:</span><b id="stat-tie">0</b></span>
-                            <span class="stat-banker"><span data-i18n="stat_bpair">庄对:</span><b id="stat-bpair">0</b></span>
-                            <span class="stat-player"><span data-i18n="stat_ppair">闲对:</span><b id="stat-ppair">0</b></span>
-                            <span><span data-i18n="stat_lucky6">幸6:</span><b id="stat-lucky6">0</b></span>
-                            <span><span data-i18n="stat_lucky7">幸7:</span><b id="stat-lucky7">0</b></span>
+                    <!-- 下三路 + 珠仔路 -->
+                    <div class="bottom-table-container">
+                        <div class="small-tables-group">
+                            <div class="grid-dayan" id="dayan"></div>
+                            <div class="grid-small" id="xiaolu"></div>
+                            <div class="grid-small" id="zhanglang"></div>
                         </div>
-                    </div>
-                    <div class="chips-scroll-wrapper">
-                        <button class="chip-scroll-btn" id="chip-scroll-left">&lt;</button>
-                        <div class="chips-group" id="chips-scroll-area">
-                            <div class="chip chip-25 selected" data-val="25">25</div>
-                            <div class="chip chip-100" data-val="100">100</div>
-                            <div class="chip chip-500" data-val="500">500</div>
-                            <div class="chip chip-1000" data-val="1000">1千</div>
-                            <div class="chip chip-5000" data-val="5000">5千</div>
-                            <div class="chip chip-10000" data-val="10000">1万</div>
-                            <div class="chip chip-100000" data-val="100000">10万</div>
+                        <div class="zhuzailu-table-wrap">
+                            <div class="grid-zhuzailu" id="zhuzailu"></div>
+                            
+                            <!-- Prediction Board (Ask Road) -->
+                            <div class="prediction-board" id="prediction-board">
+                                <div class="pred-row">
+                                    <div class="pred-label"><span class="pred-indicator red"></span><span data-i18n="banker_main">庄</span></div>
+                                    <div class="pred-cell" id="pred-banker-dayan"></div>
+                                    <div class="pred-cell" id="pred-banker-small"></div>
+                                    <div class="pred-cell" id="pred-banker-cockroach"></div>
+                                </div>
+                                <div class="pred-row">
+                                    <div class="pred-label"><span class="pred-indicator blue"></span><span data-i18n="player_main">闲</span></div>
+                                    <div class="pred-cell" id="pred-player-dayan"></div>
+                                    <div class="pred-cell" id="pred-player-small"></div>
+                                    <div class="pred-cell" id="pred-player-cockroach"></div>
+                                </div>
+                            </div>
                         </div>
-                        <button class="chip-scroll-btn" id="chip-scroll-right">&gt;</button>
-                    </div>
-                    <div class="action-group">
-                        <button id="btn-test-run" class="btn-action btn-clear" style="background: #e91e63; display: none;">Test</button>
-                        <button id="btn-clear" class="btn-action btn-clear" data-i18n="btn_clear">清除</button>
-                        <button id="btn-deal" class="btn-action btn-deal" data-i18n="btn_deal">发牌</button>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- 路单区 -->
-        <div class="roadmap-area">
-            <!-- 大路 -->
-            <div class="grid-dalu" id="dalu"></div>
-
-            <!-- 下三路 + 珠仔路 -->
-            <div class="bottom-table-container">
-                <div class="small-tables-group">
-                    <div class="grid-dayan" id="dayan"></div>
-                    <div class="grid-small" id="xiaolu"></div>
-                    <div class="grid-small" id="zhanglang"></div>
-                </div>
-                <div class="zhuzailu-table-wrap">
-              <div class="grid-zhuzailu" id="zhuzailu"></div>
-              
-              <!-- Prediction Board (Ask Road) -->
-              <div class="prediction-board" id="prediction-board">
-                  <div class="pred-row">
-                      <div class="pred-label"><span class="pred-indicator red"></span><span data-i18n="banker_main">庄</span></div>
-                      <div class="pred-cell" id="pred-banker-dayan"></div>
-                      <div class="pred-cell" id="pred-banker-small"></div>
-                      <div class="pred-cell" id="pred-banker-cockroach"></div>
-                  </div>
-                  <div class="pred-row">
-                      <div class="pred-label"><span class="pred-indicator blue"></span><span data-i18n="player_main">闲</span></div>
-                      <div class="pred-cell" id="pred-player-dayan"></div>
-                      <div class="pred-cell" id="pred-player-small"></div>
-                      <div class="pred-cell" id="pred-player-cockroach"></div>
-                  </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
     </div>
 
-    <!-- 游戏设置弹窗 -->
-    <div id="settings-modal" class="modal">
+    <!-- 游戏设置弹窗 (In-Game Settings) -->
+    <div id="settings-modal" class="modal hidden">
         <div class="modal-content">
             <h2 data-i18n="settings_title">游戏设置</h2>
             
@@ -211,25 +294,18 @@
 
             <div class="form-group">
                 <label data-i18n="music_settings">音效设置 / Audio</label>
-                
-                <!-- 控制按钮行 (左右排列) -->
                 <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 10px;">
-                    <!-- 背景音乐 -->
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="font-size: 14px;">背景音乐:</span>
                         <button id="btn-music-toggle" class="btn-music-control">🔇</button>
                         <span id="music-status-text" style="font-size: 12px; color: #aaa;">关闭</span>
                     </div>
-
-                    <!-- 报点数 -->
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="font-size: 14px;">报点数:</span>
                         <button id="btn-voice-toggle" class="btn-music-control">🔊</button>
                         <span id="voice-status-text" style="font-size: 12px; color: #aaa;">开启</span>
                     </div>
                 </div>
-
-                <!-- 音量滑块 -->
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="font-size: 14px;">音量 / Volume:</span>
                     <input type="range" id="music-volume" min="0" max="1" step="0.1" value="0.1" style="flex: 1;">
@@ -240,7 +316,8 @@
                 <label data-i18n="buyin_amount">买码金额</label>
                 <input type="text" id="setting-buyin" value="10,000">
             </div>
-
+            
+            <!-- Other settings are read-only or changeable? User can change limits in game? Usually yes. -->
             <div class="form-group-row">
                 <div class="form-group half-width">
                     <label data-i18n="min_bet">最低投注</label>
@@ -254,7 +331,6 @@
                         <option value="3000">3,000</option>
                     </select>
                 </div>
-
                 <div class="form-group half-width">
                     <label data-i18n="max_bet">最大投注</label>
                     <select id="setting-max-limit">
@@ -284,33 +360,33 @@
                     <label class="checkbox-label">
                         <input type="checkbox" id="setting-lucky6" checked>
                         <div>
-                            <span data-i18n="opt_lucky6">开启“幸运6” (庄6点赢)</span>
-                            <div class="setting-odds" data-i18n="odds_lucky6">赔率: 1:12,20(2張3張)/1:12 (2张) / 1:20 (3张)</div>
+                            <span data-i18n="opt_lucky6">开启“幸运6”</span>
+                            <div class="setting-odds" data-i18n="odds_lucky6">赔率: 1:12/20</div>
                         </div>
                     </label>
                     <label class="checkbox-label">
                         <input type="checkbox" id="setting-lucky7" checked>
                         <div>
-                            <span data-i18n="opt_lucky7">开启“幸运7” (闲7赢)</span>
-                            <div class="setting-odds" data-i18n="odds_lucky7">赔率: 1:6 (2张) / 1:15 (3张)</div>
+                            <span data-i18n="opt_lucky7">开启“幸运7”</span>
+                            <div class="setting-odds" data-i18n="odds_lucky7">赔率: 1:6/15</div>
                         </div>
                     </label>
                     <label class="checkbox-label">
                         <input type="checkbox" id="setting-super-lucky7" checked>
                         <div>
-                            <span data-i18n="opt_super_lucky7">开启“超级幸运7” (闲7赢庄6)</span>
-                            <div class="setting-odds" data-i18n="odds_super_lucky7">赔率: 1:30 (4张) / 1:40 (5张) / 1:100 (6张)</div>
+                            <span data-i18n="opt_super_lucky7">开启“超级幸运7”</span>
+                            <div class="setting-odds" data-i18n="odds_super_lucky7">赔率: 1:30+</div>
                         </div>
                     </label>
                 </div>
             </div>
 
-            <button id="btn-start-game" class="btn-primary" data-i18n="btn_start">开始游戏</button>
+            <button id="btn-start-game" class="btn-primary" data-i18n="btn_continue">继续游戏</button>
         </div>
     </div>
 
     <!-- 统计信息弹窗 -->
-    <div id="balance-info-modal" class="modal hidden" style="display: none;"> <!-- Initially hidden with inline style to override flex if needed, but class hidden usually handles it. Wait, modal class has display: flex. hidden needs !important -->
+    <div id="balance-info-modal" class="modal hidden" style="display: none;">
         <div class="modal-content" style="max-width: 300px; text-align: center;">
             <h2 style="margin-bottom: 15px;">统计信息</h2>
             <div class="info-row" style="margin-bottom: 10px; font-size: 18px; display: flex; justify-content: space-between; padding: 0 20px;">
@@ -325,7 +401,6 @@
 
     <!-- Peek Overlay -->
     <div id="peek-overlay">
-        <!-- Opponent Cards Area (Top) -->
         <div class="peek-opponent-container">
             <div class="peek-opponent-title">對家 (Opponent) <span id="peek-opponent-score"></span></div>
             <div class="peek-opponent-cards"></div>
