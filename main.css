@@ -21,6 +21,26 @@ body {
     font-family: Arial, sans-serif;
 }
 
+body.lang-zh-CN,
+body.lang-zh-CN input,
+body.lang-zh-CN button,
+body.lang-zh-CN select,
+body.lang-zh-CN textarea,
+body.lang-zh-CN .game-area,
+body.lang-zh-CN .login-card {
+    font-family: "Microsoft YaHei", "PingFang SC", "Heiti SC", Arial, sans-serif !important;
+}
+
+body.lang-zh-TW,
+body.lang-zh-TW input,
+body.lang-zh-TW button,
+body.lang-zh-TW select,
+body.lang-zh-TW textarea,
+body.lang-zh-TW .game-area,
+body.lang-zh-TW .login-card {
+    font-family: "Microsoft JhengHei", "PingFang TC", "Heiti TC", Arial, sans-serif !important;
+}
+
 /* 版本标签 */
 .version-tag {
     font-size: 14px;
@@ -224,13 +244,39 @@ body {
 
 .table-limit-display {
     position: absolute;
-    top: 10px;
-    left: 10px;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 12px;
+    top: 15px; /* Slightly lower to align with buttons visually */
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.9); /* Increased opacity for visibility */
+    font-size: 14px; /* Slightly larger */
     z-index: 50;
     font-weight: bold;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    background: rgba(0,0,0,0.3); /* Optional: add background for readability */
+    padding: 2px 10px;
+    border-radius: 12px;
+}
+
+.btn-back-circle {
+    /* Inherit position from inline style or define here */
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    font-size: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.2s;
+    /* Remove default button styles */
+    padding: 0;
+}
+
+.btn-back-circle:hover {
+    background: rgba(0, 0, 0, 0.5);
 }
 
 .btn-settings-toggle {
@@ -1266,10 +1312,11 @@ body {
     font-size: 24px;
 }
 
-.radio-group, .checkbox-group {
+/* Radio Group Styling */
+.radio-group {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 .radio-group.horizontal-group {
@@ -1277,12 +1324,41 @@ body {
     gap: 20px; /* Add some spacing between horizontal items */
 }
 
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
 .radio-label, .checkbox-label {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.radio-label:hover, .checkbox-label:hover {
+    background: #e9ecef;
+}
+
+/* Style for when radio is checked - achieved by :has selector or JS, 
+   but since :has is newer, we can use adjacent sibling or just simple hover for now. 
+   Or add a class via JS. For simplicity, just hover and basic input style. */
+.radio-label input[type="radio"]:checked + span,
+.checkbox-label input[type="checkbox"]:checked + div span {
+    font-weight: bold;
+    color: #007bff;
+}
+
+.radio-label input[type="radio"],
+.checkbox-label input[type="checkbox"] {
+    transform: scale(1.2);
+    accent-color: #007bff;
 }
 
 .btn-primary {

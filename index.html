@@ -12,53 +12,97 @@
         <!-- VIEW 1: LOGIN -->
         <div id="login-view" class="view-section">
             <div class="login-card">
-                <h2>百家乐大厅 Login</h2>
+                <h2 data-i18n="login_title">百家乐大厅 Login</h2>
                 
                 <div class="form-group">
-                    <label>昵称 / Nickname</label>
+                    <label data-i18n="label_nickname">昵称 / Nickname</label>
                     <input type="text" id="login-nickname" value="Player1" class="form-input">
                 </div>
                 
                 <div class="form-group">
-                    <label>初始金额 / Balance</label>
+                    <label data-i18n="label_balance">初始金额 / Balance</label>
                     <input type="number" id="login-balance" value="10000" class="form-input">
                 </div>
                 
-                <div class="form-group">
-                    <label>台红限制 / Table Limits</label>
-                    <select id="login-table-limit" class="form-select">
-                        <option value="25-1500000">25 - 150万</option>
-                        <option value="100-5000000">100 - 500万</option>
-                    </select>
+                <div class="form-group-row">
+                    <div class="form-group half-width">
+                        <label data-i18n="label_min_bet">最低投注 / Min Bet</label>
+                        <select id="login-min-limit" class="form-select">
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="500">500</option>
+                            <option value="1000">1,000</option>
+                            <option value="1500">1,500</option>
+                            <option value="2000">2,000</option>
+                            <option value="3000">3,000</option>
+                        </select>
+                    </div>
+                    <div class="form-group half-width">
+                        <label data-i18n="label_max_bet">最大投注 / Max Bet</label>
+                        <select id="login-max-limit" class="form-select">
+                            <option value="1500000">1,500,000</option>
+                            <option value="2500000">2,500,000</option>
+                        </select>
+                    </div>
                 </div>
                 
                 <div class="form-group">
-                    <label>抽水模式 / Commission</label>
+                    <label data-i18n="label_commission">抽水模式 / Commission</label>
                     <div class="radio-group">
-                        <label class="radio-label"><input type="radio" name="login-commission" value="classic"> 传统(0.95)</label>
-                        <label class="radio-label"><input type="radio" name="login-commission" value="super6" checked> 免佣(Super6)</label>
+                        <label class="radio-label">
+                            <input type="radio" name="login-commission" value="classic">
+                            <span data-i18n="comm_classic">95桌 (庄赢0.95)</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="login-commission" value="super6" checked>
+                            <span data-i18n="comm_super6">6点一半 (免佣)</span>
+                        </label>
                     </div>
                 </div>
                 
                 <div class="form-group">
-                    <label>玩法选项 / Side Bets</label>
-                    <div class="checkbox-group-vertical">
-                        <label><input type="checkbox" id="login-sb-lucky6" checked> 开启“幸运6”</label>
-                        <label><input type="checkbox" id="login-sb-lucky7" checked> 开启“幸运7”</label>
-                        <label><input type="checkbox" id="login-sb-super7" checked> 开启“超级幸运7”</label>
+                    <label data-i18n="label_side_bets">玩法选项 / Side Bets</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="login-sb-lucky6" checked>
+                            <div>
+                                <span data-i18n="opt_lucky6">开启“幸运6” (庄6点赢)</span>
+                                <div class="setting-odds" data-i18n="odds_lucky6">赔率: 1:12,20(2張3張)</div>
+                            </div>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="login-sb-lucky7" checked>
+                            <div>
+                                <span data-i18n="opt_lucky7">开启“幸运7” (闲7赢)</span>
+                                <div class="setting-odds" data-i18n="odds_lucky7">赔率: 1:6 (2张) / 1:15 (3张)</div>
+                            </div>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="login-sb-super7" checked>
+                            <div>
+                                <span data-i18n="opt_super_lucky7">开启“超级幸运7” (闲7赢庄6)</span>
+                                <div class="setting-odds" data-i18n="odds_super_lucky7">赔率: 1:30 (4张) / 1:40 (5张) / 1:100 (6张)</div>
+                            </div>
+                        </label>
                     </div>
                 </div>
                 
                 <div class="form-group">
-                    <label>语言 / Language</label>
-                    <select id="login-language" class="form-select">
-                        <option value="zh-CN">简体中文</option>
-                        <option value="zh-TW">繁體中文</option>
-                    </select>
+                    <label data-i18n="label_language">语言 / Language</label>
+                    <div class="radio-group horizontal-group">
+                        <label class="radio-label">
+                            <input type="radio" name="login-language" value="zh-CN" checked>
+                            简体中文
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="login-language" value="zh-TW">
+                            繁體中文
+                        </label>
+                    </div>
                 </div>
                 
                 <div class="form-group">
-                    <label>音效设置 / Audio</label>
+                    <label data-i18n="label_audio">音效设置 / Audio</label>
                     <div class="volume-control-row">
                         <span>BGM: <input type="range" id="login-bgm-volume" min="0" max="100" value="10"></span>
                     </div>
@@ -67,7 +111,7 @@
                     </div>
                 </div>
                 
-                <button id="btn-enter-lobby" class="btn-primary full-width">进入大厅 (Enter Lobby)</button>
+                <button id="btn-enter-lobby" class="btn-primary full-width" data-i18n="btn_enter_lobby">进入大厅 (Enter Lobby)</button>
             </div>
         </div>
 
@@ -344,11 +388,11 @@
                 <label data-i18n="commission_mode">抽水模式</label>
                 <div class="radio-group">
                     <label class="radio-label">
-                        <input type="radio" name="commission" value="classic">
+                        <input type="radio" id="setting-comm-classic" name="commission" value="classic">
                         <span data-i18n="comm_classic">95桌 (庄赢0.95)</span>
                     </label>
                     <label class="radio-label">
-                        <input type="radio" name="commission" value="super6" checked>
+                        <input type="radio" id="setting-comm-super6" name="commission" value="super6" checked>
                         <span data-i18n="comm_super6">6点一半 (免佣)</span>
                     </label>
                 </div>
@@ -360,22 +404,22 @@
                     <label class="checkbox-label">
                         <input type="checkbox" id="setting-lucky6" checked>
                         <div>
-                            <span data-i18n="opt_lucky6">开启“幸运6”</span>
-                            <div class="setting-odds" data-i18n="odds_lucky6">赔率: 1:12/20</div>
+                            <span data-i18n="opt_lucky6">开启“幸运6” (庄6点赢)</span>
+                            <div class="setting-odds" data-i18n="odds_lucky6">赔率: 1:12,20(2張3張)</div>
                         </div>
                     </label>
                     <label class="checkbox-label">
                         <input type="checkbox" id="setting-lucky7" checked>
                         <div>
-                            <span data-i18n="opt_lucky7">开启“幸运7”</span>
-                            <div class="setting-odds" data-i18n="odds_lucky7">赔率: 1:6/15</div>
+                            <span data-i18n="opt_lucky7">开启“幸运7” (闲7赢)</span>
+                            <div class="setting-odds" data-i18n="odds_lucky7">赔率: 1:6 (2张) / 1:15 (3张)</div>
                         </div>
                     </label>
                     <label class="checkbox-label">
                         <input type="checkbox" id="setting-super-lucky7" checked>
                         <div>
-                            <span data-i18n="opt_super_lucky7">开启“超级幸运7”</span>
-                            <div class="setting-odds" data-i18n="odds_super_lucky7">赔率: 1:30+</div>
+                            <span data-i18n="opt_super_lucky7">开启“超级幸运7” (闲7赢庄6)</span>
+                            <div class="setting-odds" data-i18n="odds_super_lucky7">赔率: 1:30 (4张) / 1:40 (5张) / 1:100 (6张)</div>
                         </div>
                     </label>
                 </div>

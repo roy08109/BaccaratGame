@@ -9,6 +9,17 @@ const CONFIG = {
 
 const TRANSLATIONS = {
     'zh-CN': {
+        login_title: '百家乐大厅 Login',
+        label_nickname: '昵称 / Nickname',
+        label_balance: '初始金额 / Balance',
+        label_min_bet: '最低投注 / Min Bet',
+        label_max_bet: '最大投注 / Max Bet',
+        label_commission: '抽水模式 / Commission',
+        label_side_bets: '玩法选项 / Side Bets',
+        label_language: '语言 / Language',
+        label_audio: '音效设置 / Audio',
+        btn_enter_lobby: '进入大厅 (Enter Lobby)',
+
         settings_title: '游戏设置',
         table_limit: '台红限制',
         min_bet: '最低投注',
@@ -18,7 +29,7 @@ const TRANSLATIONS = {
         comm_super6: '6点一半 (免佣)',
         game_options: '玩法选项',
         opt_lucky6: '开启“幸运6” (庄6点赢)',
-        odds_lucky6: '赔率: 1:12,20(2張3張)/1:12 (2张) / 1:20 (3张)',
+        odds_lucky6: '赔率: 1:12,20(2张3张)',
         opt_lucky7: '开启“幸运7” (闲7赢)',
         odds_lucky7: '赔率: 1:6 (2张) / 1:15 (3张)',
         opt_super_lucky7: '开启“超级幸运7” (闲7赢庄6)',
@@ -55,6 +66,17 @@ const TRANSLATIONS = {
         btn_fly: '飞牌'
     },
     'zh-TW': {
+        login_title: '百家樂大廳 Login',
+        label_nickname: '暱稱 / Nickname',
+        label_balance: '初始金額 / Balance',
+        label_min_bet: '最低投注 / Min Bet',
+        label_max_bet: '最大投注 / Max Bet',
+        label_commission: '抽水模式 / Commission',
+        label_side_bets: '玩法選項 / Side Bets',
+        label_language: '語言 / Language',
+        label_audio: '音效設定 / Audio',
+        btn_enter_lobby: '進入大廳 (Enter Lobby)',
+
         settings_title: '遊戲設置',
         table_limit: '台紅限制',
         min_bet: '最低投注',
@@ -64,7 +86,7 @@ const TRANSLATIONS = {
         comm_super6: '6點一半 (免傭)',
         game_options: '玩法選項',
         opt_lucky6: '開啟“幸運6” (庄6點贏)',
-        odds_lucky6: '賠率: 1:12,20(2張3張)/1:12 (2張) / 1:20 (3張)',
+        odds_lucky6: '賠率: 1:12,20(2張3張)',
         opt_lucky7: '開啟“幸運7” (閑7贏)',
         odds_lucky7: '賠率: 1:6 (2張) / 1:15 (3張)',
         opt_super_lucky7: '開啟“超級幸運7” (閑7贏庄6)',
@@ -106,6 +128,11 @@ let currentLang = 'zh-CN';
 
 function updateLanguage(lang) {
     currentLang = lang;
+    
+    // Update font family via body class
+    document.body.classList.remove('lang-zh-CN', 'lang-zh-TW');
+    document.body.classList.add(`lang-${lang}`);
+    
     const t = TRANSLATIONS[lang];
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
@@ -1279,8 +1306,58 @@ class BaccaratGame {
         this.updateDealButtonState();
         this.updateClearButtonState();
         
+        // Apply Config to UI (Table Limits & Side Bets)
+        this.updateUIFromConfig();
+        
         // Trigger Cut Animation on Init
         setTimeout(() => this.performCut(), 500);
+    }
+    
+    updateUIFromConfig() {
+        // 1. Update Table Limit Display
+        const limitDisplay = document.getElementById('table-limit-display');
+        if (limitDisplay) {
+            // Format numbers: 25 -> 25, 1500000 -> 150万
+            const formatLimit = (num) => {
+                if (num >= 10000) return (num / 10000) + '万';
+                return num;
+            };
+            limitDisplay.textContent = `台红: ${formatLimit(this.config.minLimit)}-${formatLimit(this.config.maxLimit)}`;
+        }
+        
+        // 2. Toggle Side Bet Visibility
+        const sbArea = document.querySelector('.side-bets-row');
+        if (sbArea) {
+            const bets = this.config.sideBets || {};
+            
+            // Lucky 6 Buttons
+            const btnL6 = document.getElementById('bet-lucky6');
+            const btnL6_2 = document.getElementById('bet-lucky6-2');
+            const btnL6_3 = document.getElementById('bet-lucky6-3');
+            if (btnL6) btnL6.style.display = bets.lucky6 ? 'flex' : 'none';
+            if (btnL6_2) btnL6_2.style.display = bets.lucky6 ? 'flex' : 'none';
+            if (btnL6_3) btnL6_3.style.display = bets.lucky6 ? 'flex' : 'none';
+            
+            // Lucky 7 Button
+            const btnL7 = document.getElementById('bet-lucky7');
+            if (btnL7) btnL7.style.display = bets.lucky7 ? 'flex' : 'none';
+            
+            // Super Lucky 7 Button
+            const btnSL7 = document.getElementById('bet-super-lucky7');
+            if (btnSL7) btnSL7.style.display = bets.superLucky7 ? 'flex' : 'none';
+        }
+
+        // 3. Update Banker Odds Display & Table Theme
+        const bankerOdds = document.getElementById('banker-odds');
+        const gameArea = document.querySelector('.game-area');
+        
+        if (this.config.commissionMode === 'super6') {
+            if (bankerOdds) bankerOdds.textContent = '0.5:1 / 1:1';
+            if (gameArea) gameArea.classList.add('theme-super6');
+        } else {
+            if (bankerOdds) bankerOdds.textContent = '0.95:1';
+            if (gameArea) gameArea.classList.remove('theme-super6');
+        }
     }
     
     initRoads() {
@@ -1426,6 +1503,25 @@ class BaccaratGame {
     }
     
     initUI() {
+        // Clear previous game state artifacts
+        document.getElementById('cards-player').innerHTML = '';
+        document.getElementById('cards-banker').innerHTML = '';
+        document.getElementById('score-player').textContent = '0';
+        document.getElementById('score-banker').textContent = '0';
+        
+        const resOverlay = document.getElementById('result-overlay');
+        if (resOverlay) {
+            resOverlay.classList.add('hidden');
+            resOverlay.innerHTML = '';
+        }
+        
+        const vidOverlay = document.getElementById('video-overlay');
+        if (vidOverlay) vidOverlay.classList.add('hidden');
+
+        // Clear bet markers
+        document.querySelectorAll('.bet-chip-marker').forEach(el => el.remove());
+        document.querySelectorAll('.bet-btn').forEach(el => el.classList.remove('active'));
+
         const gameArea = document.querySelector('.game-area');
         if (gameArea) {
             if (this.config.commissionMode === 'super6') {
@@ -1472,18 +1568,50 @@ class BaccaratGame {
         
         if (btnSettingsToggle) {
             btnSettingsToggle.onclick = () => {
+                // Pre-fill inputs with current config to match game state
+                // Commission
+                if (this.config.commissionMode === 'classic') {
+                    const el = document.getElementById('setting-comm-classic');
+                    if (el) el.checked = true;
+                } else {
+                    const el = document.getElementById('setting-comm-super6');
+                    if (el) el.checked = true;
+                }
+                
+                // Limits
+                const minLimit = document.getElementById('setting-min-limit');
+                const maxLimit = document.getElementById('setting-max-limit');
+                if (minLimit) minLimit.value = this.config.minLimit;
+                if (maxLimit) maxLimit.value = this.config.maxLimit;
+                
+                // Side Bets
+                if (this.config.sideBets) {
+                    const sb6 = document.getElementById('setting-lucky6');
+                    const sb7 = document.getElementById('setting-lucky7');
+                    const sbS7 = document.getElementById('setting-super-lucky7');
+                    if (sb6) sb6.checked = this.config.sideBets.lucky6;
+                    if (sb7) sb7.checked = this.config.sideBets.lucky7;
+                    if (sbS7) sbS7.checked = this.config.sideBets.superLucky7;
+                }
+                
+                // Language
+                if (this.config.language) {
+                    const langRadio = document.querySelector(`input[name="language"][value="${this.config.language}"]`);
+                    if (langRadio) langRadio.checked = true;
+                }
+                
+                // Buy-in Input: Set to 0 to indicate "Amount to Add"
+                const buyinInput = document.getElementById('setting-buyin');
+                if (buyinInput) buyinInput.value = '0';
+                
                 modal.classList.remove('hidden');
                 modal.style.display = 'flex';
             };
         }
         
+        // Remove this onclick handler as it conflicts with initSettingsEvents
         if (btnContinue) {
-            btnContinue.onclick = () => {
-                modal.classList.add('hidden');
-                modal.style.display = 'none';
-                // Apply setting changes if any
-                // Simplified for now
-            };
+            btnContinue.onclick = null; 
         }
         
         // Info Modal
@@ -2473,7 +2601,22 @@ class App {
              });
         }
 
+        // Add listener for Login Language change (Instant update)
+        const loginLangRadios = document.querySelectorAll('input[name="login-language"]');
+        loginLangRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    updateLanguage(e.target.value);
+                }
+            });
+        });
+
+        // Initialize language
+        updateLanguage(this.state.settings.language);
+
         this.switchView('login');
+        
+        this.initSettingsEvents();
     }
     
     switchView(viewName) {
@@ -2487,11 +2630,15 @@ class App {
         const nickname = document.getElementById('login-nickname').value || 'Guest';
         const balance = parseInt(document.getElementById('login-balance').value) || 10000;
         
-        const limitSelect = document.getElementById('login-table-limit');
-        const [min, max] = limitSelect.value.split('-').map(Number);
+        const minLimitSelect = document.getElementById('login-min-limit');
+        const maxLimitSelect = document.getElementById('login-max-limit');
+        const min = parseInt(minLimitSelect.value);
+        const max = parseInt(maxLimitSelect.value);
         
         const commMode = document.querySelector('input[name="login-commission"]:checked').value;
         
+        // Fix: Use correct querySelector for new checkbox structure
+        // The checkboxes are inside labels, but IDs are still unique.
         const sbLucky6 = document.getElementById('login-sb-lucky6').checked;
         const sbLucky7 = document.getElementById('login-sb-lucky7').checked;
         const sbSuperLucky7 = document.getElementById('login-sb-super7').checked;
@@ -2499,7 +2646,7 @@ class App {
         const bgmVol = document.getElementById('login-bgm-volume').value / 100;
         const voiceVol = document.getElementById('login-voice-volume').value / 100;
         
-        const lang = document.getElementById('login-language').value;
+        const lang = document.querySelector('input[name="login-language"]:checked').value;
         
         this.state.nickname = nickname;
         this.state.balance = balance;
@@ -2523,6 +2670,124 @@ class App {
         this.switchView('lobby');
     }
     
+    initSettingsEvents() {
+        // Function to apply commission mode immediately
+        const applyCommissionMode = (mode) => {
+            if (typeof game !== 'undefined' && game) {
+                game.config.commissionMode = mode;
+                this.state.settings.commissionMode = mode;
+                
+                const bankerOdds = document.getElementById('banker-odds');
+                const gameArea = document.querySelector('.game-area');
+                
+                if (mode === 'super6') {
+                    if (bankerOdds) {
+                        bankerOdds.innerHTML = '0.5:1 / 1:1';
+                        bankerOdds.style.transition = 'color 0.3s';
+                        bankerOdds.style.color = '#ffff00';
+                        setTimeout(() => bankerOdds.style.color = '', 600);
+                    }
+                    if (gameArea) gameArea.classList.add('theme-super6');
+                } else {
+                    if (bankerOdds) {
+                        bankerOdds.innerHTML = '0.95:1';
+                        bankerOdds.style.transition = 'color 0.3s';
+                        bankerOdds.style.color = '#ffff00';
+                        setTimeout(() => bankerOdds.style.color = '', 600);
+                    }
+                    if (gameArea) gameArea.classList.remove('theme-super6');
+                }
+            }
+        };
+
+        // Add instant listeners to radios
+        const classicRadio = document.getElementById('setting-comm-classic');
+        const super6Radio = document.getElementById('setting-comm-super6');
+        
+        if (classicRadio) {
+            classicRadio.addEventListener('change', () => {
+                if (classicRadio.checked) applyCommissionMode('classic');
+            });
+        }
+        
+        if (super6Radio) {
+            super6Radio.addEventListener('change', () => {
+                if (super6Radio.checked) applyCommissionMode('super6');
+            });
+        }
+
+        // Add instant listeners to language radios
+        const langRadios = document.querySelectorAll('input[name="language"]');
+        langRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    const newLang = e.target.value;
+                    this.state.settings.language = newLang;
+                    updateLanguage(newLang);
+                }
+            });
+        });
+
+        const updateSettings = () => {
+            // Explicitly check radios by ID
+            let newCommMode = 'super6'; // default
+            
+            if (classicRadio && classicRadio.checked) {
+                newCommMode = 'classic';
+            } else if (super6Radio && super6Radio.checked) {
+                newCommMode = 'super6';
+            }
+            
+            // Re-apply just in case
+            applyCommissionMode(newCommMode);
+            
+            // Update other settings
+            if (typeof game !== 'undefined' && game) {
+                // Buy-in (Add to Balance)
+                const buyinInput = document.getElementById('setting-buyin');
+                const addAmount = parseInt(buyinInput ? buyinInput.value.replace(/,/g, '') : '0');
+                
+                if (!isNaN(addAmount) && addAmount > 0) {
+                    game.balance += addAmount;
+                    this.state.balance = game.balance; // Sync state
+                    game.updateBalanceUI();
+                    this.renderLobby(); // Update lobby header too
+                }
+
+                game.config.minLimit = parseInt(document.getElementById('setting-min-limit').value);
+                game.config.maxLimit = parseInt(document.getElementById('setting-max-limit').value);
+                
+                if (!game.config.sideBets) game.config.sideBets = {};
+                game.config.sideBets.lucky6 = document.getElementById('setting-lucky6').checked;
+                game.config.sideBets.lucky7 = document.getElementById('setting-lucky7').checked;
+                game.config.sideBets.superLucky7 = document.getElementById('setting-super-lucky7').checked;
+                
+                game.updateUIFromConfig();
+            }
+            
+            const newLang = document.querySelector('input[name="language"]:checked').value;
+            if (newLang !== this.state.settings.language) {
+                this.state.settings.language = newLang;
+                updateLanguage(newLang);
+            }
+            
+            const vol = parseFloat(document.getElementById('music-volume').value);
+            if (typeof game !== 'undefined' && game && game.announcer) {
+                game.announcer.volume = vol;
+            }
+            
+            document.getElementById('settings-modal').classList.add('hidden');
+        };
+        
+        // Remove old listeners by cloning
+        const btnStart = document.getElementById('btn-start-game');
+        if (btnStart) {
+            const newBtn = btnStart.cloneNode(true);
+            btnStart.parentNode.replaceChild(newBtn, btnStart);
+            newBtn.addEventListener('click', updateSettings);
+        }
+    }
+
     generateTables() {
         this.state.tables = [];
         for (let i = 1; i <= 10; i++) {
@@ -2668,12 +2933,13 @@ class App {
         if (header) {
              const btn = document.createElement('button');
              btn.id = 'btn-return-lobby';
-             btn.className = 'btn-secondary-small';
+             btn.className = 'btn-secondary-small btn-back-circle';
              btn.style.position = 'absolute';
              btn.style.top = '10px';
              btn.style.left = '10px';
              btn.style.zIndex = '100';
-             btn.textContent = '🏠 返回大厅';
+             btn.innerHTML = '&#11013;'; // Left arrow unicode
+             btn.title = '返回大厅';
              btn.onclick = () => this.returnToLobby();
              header.appendChild(btn);
         }
